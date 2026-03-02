@@ -129,8 +129,8 @@ function navigateTo(page) {
 
   if (page === 'motorista-inicio') initMotoristaInicio();
   if (page === 'motorista-boletins') loadMotoristaBoletins();
-  if (page === 'admin-dashboard') loadAdminDashboard();
-  if (page === 'admin-boletins') loadAdminTodosBoletins();
+  if (page === 'admin-dashboard') loadDashboard();
+  if (page === 'admin-boletins') loadAdminBoletins();
   if (page === 'admin-veiculos') loadVeiculosConfig();
   if (page === 'admin-usuarios') loadUsuarios();
 }
@@ -256,22 +256,51 @@ async function loadMotoristaBoletins() {
   hideLoading();
 }
 
-// ===================== ADMIN LOGIC =====================
-async function loadAdminDashboard() {
+// ===================== DASHBOARD =====================
+let dashboardData = null;
+
+async function loadDashboard() {
   showLoading();
   try {
-    const [bol, u] = await Promise.all([apiGet('getBoletins'), apiGet('getUsuarios')]);
-    document.getElementById('statBoletins').textContent = bol.data.length;
-    document.getElementById('statUsuarios').textContent = u.data.length;
+    const res = await apiGet('getDadosDashboard');
+    if (res.success) {
+      dashboardData = res.apuracao;
+      document.getElementById('statBoletins').textContent = res.totalBoletins || 0;
+      document.getElementById('statUsuarios').textContent = res.totalUsuarios || 0; // Assuming totalUsuarios is also returned
 
-    document.getElementById('adminDashboardBoletins').innerHTML = bol.data.slice(0, 5).map(b => `
-      <tr><td>${b.motorista}</td><td>${b.placa}</td><td>${b.mesReferencia}</td><td><button class="btn btn-sm btn-secondary" onclick="abrirBoletimDetalhes('${b.id}')">Ver</button></td></tr>
-    `).join('');
-  } catch (e) { }
+      const select = document.getElementById('filtroMesApuracao');
+      const meses = Object.keys(dashboardData).sort().reverse();
+      select.innerHTML = meses.map(m => `<option value="${m}">${m}</option>`).join('');
+
+      if (meses.length > 0) renderDadosApuracao();
+    }
+  } catch (e) {
+    console.error('Erro dashboard:', e);
+  }
   hideLoading();
 }
 
-async function loadAdminTodosBoletins() {
+function renderDadosApuracao() {
+  const mes = document.getElementById('filtroMesApuracao').value;
+  const tbody = document.getElementById('listaApuracaoVeiculos');
+  if (!dashboardData || !mes || !dashboardData[mes]) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Nenhum dado para este período.</td></tr>';
+    return;
+  }
+
+  const veiculos = dashboardData[mes];
+  tbody.innerHTML = Object.keys(veiculos).map(cod => `
+    <tr>
+      <td><span style="font-weight:700; color:var(--accent-blue)">${cod}</span></td>
+      <td>${veiculos[cod].placa}</td>
+      <td>${veiculos[cod].rota}</td>
+      <td style="text-align:center"><span class="badge" style="background:var(--bg-secondary); border:1px solid var(--border)">${veiculos[cod].totalDias} dias</span></td>
+    </tr>
+  `).join('');
+}
+
+// ===================== ADMIN LOGIC =====================
+async function loadAdminBoletins() {
   showLoading();
   try {
     const res = await apiGet('getBoletins');

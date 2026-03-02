@@ -39,6 +39,11 @@ function formatarMes(val) {
   return Utilities.formatDate(d, 'America/Sao_Paulo', 'yyyy-MM');
 }
 
+function formatarMesLongo(date) {
+  const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  return meses[date.getMonth()] + ' / ' + date.getFullYear();
+}
+
 // =====================================================
 // CONFIGURAÇÃO INICIAL
 // =====================================================
@@ -109,6 +114,8 @@ function doGet(e) {
         return jsonResponse(getUsuarios());
       case 'getVeiculosConfig':
         return jsonResponse(getVeiculosConfig());
+      case 'getDadosDashboard':
+        return jsonResponse(getDadosDashboard());
       default:
         return jsonResponse({ error: 'Ação não reconhecida' });
     }
@@ -434,3 +441,72 @@ function excluirRegistro(data) {
   aba.deleteRow(data.rowIndex);
   return { success: true, message: 'Registro excluído!' };
 }
+
+function getDadosDashboard() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const abaBol = ss.getSheetByName(ABA_BOLETINS);
+  const abaReg = ss.getSheetByName(ABA_REGISTROS);
+  const abaUsr = ss.getSheetByName(ABA_USUARIOS);
+  
+  if (!abaBol || !abaReg) return { success: false, error: 'Abas não encontradas' };
+  
+  const boletins = abaBol.getDataRange().getValues();
+  const registros = abaReg.getDataRange().getValues();
+  const usuarios = abaUsr ? abaUsr.getDataRange().getValues().length - 1 : 0;
+  
+  const mapBol = {};
+  for (let i = 1; i < boletins.length; i++) {
+    mapBol[String(boletins[i][0]).trim()] = {
+      placa: String(boletins[i][3]),
+      codVeiculo: String(boletins[i][4]),
+      rota: String(boletins[i][5])
+    };
+  }
+  
+  const apuracao = {};
+  for (let j = 1; j < registros.length; j++) {
+    const bId = String(registros[j][0]).trim();
+    const bInfo = mapBol[bId];
+    if (!bInfo) continue;
+    
+    let dia, mes, ano;
+    const valData = registros[j][1];
+    if (valData instanceof Date) {
+      dia = valData.getDate();
+      mes = valData.getMonth();
+      ano = valData.getFullYear();
+    } else {
+      const partes = String(valData).split('/');
+      if (partes.length !== 3) continue;
+      dia = parseInt(partes[0]);
+      mes = parseInt(partes[1]) - 1;
+      ano = parseInt(partes[2]);
+    }
+    
+    const dAp = new Date(ano, mes, dia);
+    if (dia >= 11) {
+      dAp.setMonth(dAp.getMonth() + 1);
+    }
+    
+    const mesRef = formatarMesLongo(dAp);
+    if (!apuracao[mesRef]) apuracao[mesRef] = {};
+    
+    const cod = bInfo.codVeiculo;
+    if (!apuracao[mesRef][cod]) {
+      apuracao[mesRef][cod] = {
+        placa: bInfo.placa,
+        rota: bInfo.rota,
+        totalDias: 0,
+        dias: {}
+      };
+    }
+    const dataKey = `${dia}/${mes+1}/${ano}`;
+    if (!apuracao[mesRef][cod].dias[dataKey]) {
+      apuracao[mesRef][cod].dias[dataKey] = true;
+      apuracao[mesRef][cod].totalDias++;
+    }
+  }
+  
+  return { success: true, apuracao: apuracao, totalBoletins: boletins.length - 1, totalUsuarios: usuarios };
+}
+

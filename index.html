@@ -211,20 +211,29 @@
                     </div>
                     <div class="card mt-24">
                         <div class="card-header">
-                            <h2>Boletins Recentes</h2>
+                            <h2><span class="material-icons-round">analytics</span> Apuração por Período (11 a 10)</h2>
+                            <div class="header-actions">
+                                <select id="filtroMesApuracao" class="form-control-sm"
+                                    onchange="renderDadosApuracao()"></select>
+                            </div>
                         </div>
                         <div class="card-body">
+                            <p class="section-desc">Veículos que rodaram no período selecionado (Competência).</p>
                             <div class="table-wrapper">
                                 <table class="data-table">
                                     <thead>
                                         <tr>
-                                            <th>Motorista</th>
+                                            <th>Cód. Veículo</th>
                                             <th>Placa</th>
-                                            <th>Mês</th>
-                                            <th>Ação</th>
+                                            <th>Rota</th>
+                                            <th style="text-align:center">Dias Ativos</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="adminDashboardBoletins"></tbody>
+                                    <tbody id="listaApuracaoVeiculos">
+                                        <tr>
+                                            <td colspan="4" class="empty-state">Selecione um período</td>
+                                        </tr>
+                                    </tbody>
                                 </table>
                             </div>
                         </div>
