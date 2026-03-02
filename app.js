@@ -5,7 +5,7 @@
 
 // ===================== CONFIG =====================
 // Cole aqui a URL do seu Web App do Google Apps Script
-const API_URL = 'COLE_A_URL_DO_SEU_WEBAPP_AQUI';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzyKPCMGtmgf3laqpoplIZi4cB_fXHm89gqV65iRvt3649C6oZof1mUgyQdusZ2CNRI/exec';
 
 // ===================== STATE =====================
 const state = {
