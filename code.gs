@@ -456,7 +456,9 @@ function getDadosDashboard() {
   
   const mapBol = {};
   for (let i = 1; i < boletins.length; i++) {
-    mapBol[String(boletins[i][0]).trim()] = {
+    const bId = String(boletins[i][0]).trim();
+    if (!bId) continue;
+    mapBol[bId] = {
       placa: String(boletins[i][3]),
       codVeiculo: String(boletins[i][4]),
       rota: String(boletins[i][5])
@@ -471,18 +473,32 @@ function getDadosDashboard() {
     
     let dia, mes, ano;
     const valData = registros[j][1];
-    if (valData instanceof Date) {
+    
+    if (valData instanceof Date && !isNaN(valData)) {
       dia = valData.getDate();
       mes = valData.getMonth();
       ano = valData.getFullYear();
     } else {
-      const partes = String(valData).split('/');
-      if (partes.length !== 3) continue;
-      dia = parseInt(partes[0]);
-      mes = parseInt(partes[1]) - 1;
-      ano = parseInt(partes[2]);
+      const sData = String(valData);
+      const partes = sData.split(/[\/\-]/); // aceita / ou -
+      if (partes.length === 3) {
+        if (partes[0].length === 4) { // yyyy-mm-dd
+          ano = parseInt(partes[0]);
+          mes = parseInt(partes[1]) - 1;
+          dia = parseInt(partes[2]);
+        } else { // dd/mm/yyyy
+          dia = parseInt(partes[0]);
+          mes = parseInt(partes[1]) - 1;
+          ano = parseInt(partes[2]);
+        }
+      } else {
+        continue;
+      }
     }
     
+    if (isNaN(dia) || isNaN(mes) || isNaN(ano)) continue;
+
+    // Regra: dia 11 do mês anterior ao dia 10 do mês atual = Mês Atual
     const dAp = new Date(ano, mes, dia);
     if (dia >= 11) {
       dAp.setMonth(dAp.getMonth() + 1);
@@ -507,6 +523,11 @@ function getDadosDashboard() {
     }
   }
   
-  return { success: true, apuracao: apuracao, totalBoletins: boletins.length - 1, totalUsuarios: usuarios };
+  return { 
+    success: true, 
+    apuracao: apuracao, 
+    totalBoletins: boletins.length - 1, 
+    totalUsuarios: usuarios 
+  };
 }
 
