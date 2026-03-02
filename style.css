@@ -689,9 +689,54 @@ body {
 
   .main-content {
     margin-left: 0;
+    padding-bottom: 80px;
   }
 
   .sidebar-width {
     width: 100%;
   }
+
+  .page-container {
+    padding: 12px;
+  }
+
+  .card-body {
+    padding: 16px;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 10px 8px;
+    font-size: 0.8rem;
+  }
+
+  .btn {
+    padding: 12px 16px;
+  }
+
+  .btn-lg {
+    padding: 16px 20px;
+  }
+
+  .modal {
+    width: 95%;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  /* Ajuste para a tabela de registros no celular */
+  .boletim-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-style: italic;
 }

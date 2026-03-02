@@ -179,8 +179,6 @@ function initMotoristaInicio() {
   document.getElementById('veiculoEncontrado').style.display = 'none';
   document.getElementById('veiculoFeedback').textContent = '';
   document.getElementById('inputCodVeiculo').value = '';
-  const now = new Date();
-  document.getElementById('vMesRef').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
 async function buscarPorCodigo() {
@@ -208,7 +206,9 @@ async function buscarPorCodigo() {
 
 async function criarBoletimVeiculo() {
   const v = state.veiculoEncontrado;
-  const mes = document.getElementById('vMesRef').value;
+  const now = new Date();
+  const mes = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
   showLoading();
   try {
     const res = await apiPost({
@@ -236,18 +236,21 @@ async function loadMotoristaBoletins() {
     const tbody = document.getElementById('listaBoletinsMotorista');
     if (res.success && res.data.length > 0) {
       tbody.innerHTML = res.data.map(b => `
-        <tr>
-          <td>${b.placa} (${b.codVeiculo})</td>
-          <td>${b.rota}</td>
-          <td>${b.mesReferencia}</td>
+        <tr onclick="abrirBoletimDetalhes('${b.id}')" style="cursor:pointer">
           <td>
-            <button class="btn btn-sm btn-secondary" onclick="abrirBoletimDetalhes('${b.id}')">Ver</button>
-            <button class="btn btn-sm btn-secondary" style="color:red" onclick="excluirBoletim('${b.id}')">X</button>
+            <div style="font-weight:700; color:var(--accent-blue)">${b.codVeiculo}</div>
+            <div style="font-size:0.75rem; color:var(--text-muted)">${b.placa}</div>
+          </td>
+          <td>${b.rota}</td>
+          <td style="text-align:right">
+            <button class="btn btn-sm btn-secondary" style="color:red" onclick="event.stopPropagation(); excluirBoletim('${b.id}')">
+                <span class="material-icons-round" style="font-size:16px">delete</span>
+            </button>
           </td>
         </tr>
       `).join('');
     } else {
-      tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Nenhum boletim encontrado.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="3" class="empty-state">Nenhum boletim encontrado.</td></tr>';
     }
   } catch (e) { }
   hideLoading();

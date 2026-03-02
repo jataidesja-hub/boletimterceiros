@@ -158,12 +158,6 @@
                                 <div class="badge-signature" id="vRequerAssinatura" style="display:none;">
                                     <span class="material-icons-round">qr_code_scanner</span> Requer Assinatura QR Code
                                 </div>
-                                <div class="form-grid" style="margin-top:16px;">
-                                    <div class="form-group">
-                                        <label for="vMesRef">Mês de Referência</label>
-                                        <input type="month" id="vMesRef" required>
-                                    </div>
-                                </div>
                                 <div style="margin-top:20px;">
                                     <button class="btn btn-primary btn-lg btn-full" onclick="criarBoletimVeiculo()">
                                         <span class="material-icons-round">play_arrow</span> Iniciar Boletim
@@ -187,8 +181,7 @@
                                         <tr>
                                             <th>Veículo</th>
                                             <th>Rota</th>
-                                            <th>Mês</th>
-                                            <th>Ações</th>
+                                            <th style="text-align:right">Ações</th>
                                         </tr>
                                     </thead>
                                     <tbody id="listaBoletinsMotorista">
