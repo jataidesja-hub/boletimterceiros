@@ -120,6 +120,31 @@ function jsonResponse(data) {
 }
 
 // =====================================================
+// HELPERS DE FORMATAÇÃO
+// =====================================================
+function formatarData(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, 'America/Sao_Paulo', 'dd/MM/yyyy');
+  }
+  return String(val);
+}
+
+function formatarHora(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, 'America/Sao_Paulo', 'HH:mm');
+  }
+  return String(val);
+}
+
+function fmtCell(val) {
+  if (!val && val !== 0) return '';
+  if (val instanceof Date) return String(val);
+  return String(val);
+}
+
+// =====================================================
 // LOGIN
 // =====================================================
 function login(usuario, senha) {
@@ -233,15 +258,15 @@ function getBoletins(usuario) {
     // Se usuario informado, filtrar. Se admin, mostra tudo.
     if (usuario && usuario !== 'admin' && String(dados[i][8]) !== usuario) continue;
     resultado.push({
-      id: dados[i][0],
-      transportador: dados[i][1],
-      motorista: dados[i][2],
-      placa: dados[i][3],
+      id: String(dados[i][0]),
+      transportador: String(dados[i][1]),
+      motorista: String(dados[i][2]),
+      placa: String(dados[i][3]),
       codVeiculo: String(dados[i][4]),
-      rota: dados[i][5],
-      mesReferencia: dados[i][6],
-      dataCriacao: dados[i][7],
-      usuario: dados[i][8]
+      rota: String(dados[i][5]),
+      mesReferencia: String(dados[i][6]),
+      dataCriacao: String(dados[i][7]),
+      usuario: String(dados[i][8])
     });
   }
   return { success: true, data: resultado };
@@ -256,15 +281,15 @@ function getBoletim(id) {
       return {
         success: true,
         data: {
-          id: dados[i][0],
-          transportador: dados[i][1],
-          motorista: dados[i][2],
-          placa: dados[i][3],
+          id: String(dados[i][0]),
+          transportador: String(dados[i][1]),
+          motorista: String(dados[i][2]),
+          placa: String(dados[i][3]),
           codVeiculo: String(dados[i][4]),
-          rota: dados[i][5],
-          mesReferencia: dados[i][6],
-          dataCriacao: dados[i][7],
-          usuario: dados[i][8]
+          rota: String(dados[i][5]),
+          mesReferencia: String(dados[i][6]),
+          dataCriacao: String(dados[i][7]),
+          usuario: String(dados[i][8])
         }
       };
     }
@@ -325,16 +350,16 @@ function getRegistros(boletimId) {
     if (String(dados[i][0]) === String(boletimId)) {
       resultado.push({
         rowIndex: i + 1,
-        boletimId: dados[i][0],
-        data: String(dados[i][1]),
+        boletimId: String(dados[i][0]),
+        data: formatarData(dados[i][1]),
         diaSemana: String(dados[i][2]),
-        horaInicialIda: String(dados[i][3]),
+        horaInicialIda: formatarHora(dados[i][3]),
         kmInicialIda: String(dados[i][4]),
-        horaFinalIda: String(dados[i][5]),
+        horaFinalIda: formatarHora(dados[i][5]),
         numPessoasIda: String(dados[i][6]),
-        horaInicialVolta: String(dados[i][7]),
+        horaInicialVolta: formatarHora(dados[i][7]),
         kmFinalVolta: String(dados[i][8]),
-        horaFinalVolta: String(dados[i][9]),
+        horaFinalVolta: formatarHora(dados[i][9]),
         numPessoasVolta: String(dados[i][10]),
         objCusto: String(dados[i][11]),
         kmRodados: String(dados[i][12]),
