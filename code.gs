@@ -14,28 +14,29 @@ const ABA_PAGINA1 = 'Página1';
 // =====================================================
 // HELPERS DE FORMATAÇÃO
 // =====================================================
+function toDate(val) {
+  if (!val) return null;
+  if (val instanceof Date) return val;
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 function formatarData(val) {
-  if (!val) return '';
-  if (val instanceof Date) {
-    return Utilities.formatDate(val, 'America/Sao_Paulo', 'dd/MM/yyyy');
-  }
-  return String(val);
+  const d = toDate(val);
+  if (!d) return String(val || '');
+  return Utilities.formatDate(d, 'America/Sao_Paulo', 'dd/MM/yyyy');
 }
 
 function formatarHora(val) {
-  if (!val) return '';
-  if (val instanceof Date) {
-    return Utilities.formatDate(val, 'America/Sao_Paulo', 'HH:mm');
-  }
-  return String(val);
+  const d = toDate(val);
+  if (!d) return String(val || '');
+  return Utilities.formatDate(d, 'America/Sao_Paulo', 'HH:mm');
 }
 
 function formatarMes(val) {
-  if (!val) return '';
-  if (val instanceof Date) {
-    return Utilities.formatDate(val, 'America/Sao_Paulo', 'yyyy-MM');
-  }
-  return String(val);
+  const d = toDate(val);
+  if (!d) return String(val || '');
+  return Utilities.formatDate(d, 'America/Sao_Paulo', 'yyyy-MM');
 }
 
 // =====================================================
@@ -283,9 +284,10 @@ function getBoletins(usuario) {
   const dados = aba.getDataRange().getValues();
   const resultado = [];
   for (let i = 1; i < dados.length; i++) {
-    if (usuario && usuario !== 'admin' && String(dados[i][8]) !== usuario) continue;
+    const userRow = String(dados[i][8] || '').trim();
+    if (usuario && usuario !== 'admin' && userRow !== String(usuario).trim()) continue;
     resultado.push({
-      id: String(dados[i][0]),
+      id: String(dados[i][0]).trim(),
       transportador: String(dados[i][1]),
       motorista: String(dados[i][2]),
       placa: String(dados[i][3]),
@@ -293,7 +295,7 @@ function getBoletins(usuario) {
       rota: String(dados[i][5]),
       mesReferencia: formatarMes(dados[i][6]),
       dataCriacao: String(dados[i][7]),
-      usuario: String(dados[i][8])
+      usuario: userRow
     });
   }
   return { success: true, data: resultado };
@@ -303,9 +305,10 @@ function getBoletim(id) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const aba = ss.getSheetByName(ABA_BOLETINS);
   const dados = aba.getDataRange().getValues();
+  const idBusca = String(id || '').trim();
   for (let i = 1; i < dados.length; i++) {
-    if (String(dados[i][0]) === String(id)) {
-      const codV = String(dados[i][4]);
+    if (String(dados[i][0]).trim() === idBusca) {
+      const codV = String(dados[i][4]).trim();
       const requerAss = verificarAssinaturaObrigatoria(codV);
       return {
         success: true,
@@ -368,8 +371,9 @@ function getRegistros(e) {
   const dados = aba.getDataRange().getValues();
   const resultado = [];
   
+  const idBusca = String(boletimId || '').trim();
   for (let i = 1; i < dados.length; i++) {
-    if (String(dados[i][0]) === boletimId) {
+    if (String(dados[i][0]).trim() === idBusca) {
       resultado.push({
         rowIndex: i + 1,
         data: formatarData(dados[i][1]),

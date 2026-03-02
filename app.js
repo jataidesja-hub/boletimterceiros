@@ -364,13 +364,15 @@ function renderBoletimInfo(b) {
 function renderRegistros(regs) {
   const tbody = document.getElementById('registrosDiarios');
   tbody.innerHTML = regs.map(r => `
-    <tr>
-      <td>${r.data}</td>
-      <td>${r.diaSemana}</td>
-      <td class="ida">${r.horaInicialIda}</td><td class="ida">${r.kmInicialIda}</td><td class="ida">${r.horaFinalIda}</td><td class="ida">${r.numPessoasIda}</td>
-      <td class="volta">${r.horaInicialVolta}</td><td class="volta">${r.kmFinalVolta}</td><td class="volta">${r.horaFinalVolta}</td><td class="volta">${r.numPessoasVolta}</td>
-      <td>${r.objCusto}</td><td>${r.kmRodados}</td>
-      <td>${r.assinatura ? '<span class="material-icons-round" style="color:green">done</span>' : (state.currentBoletimData.requerAssinatura ? '❌' : '-')}</td>
+      <td>
+        <div style="font-size:0.8rem; font-weight:600">${r.data || '-'}</div>
+        <div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase">${r.diaSemana || ''}</div>
+      </td>
+      <td class="ida">${r.horaInicialIda || '-'}</td><td class="ida">${r.kmInicialIda || '-'}</td><td class="ida">${r.horaFinalIda || '-'}</td><td class="ida">${r.numPessoasIda || '0'}</td>
+      <td class="volta">${r.horaInicialVolta || '-'}</td><td class="volta">${r.kmFinalVolta || '-'}</td><td class="volta">${r.horaFinalVolta || '-'}</td><td class="volta">${r.numPessoasVolta || '0'}</td>
+      <td>${r.objCusto || '-'}</td>
+      <td><span style="font-weight:700; color:var(--accent-green)">${r.kmRodados || '0'}</span></td>
+      <td>${r.assinatura ? '<span class="material-icons-round" style="color:var(--accent-green)">check_circle</span>' : ((state.currentBoletimData && state.currentBoletimData.requerAssinatura) ? '<span class="material-icons-round" style="color:var(--accent-red)">cancel</span>' : '-')}</td>
       <td>
         <button class="btn btn-sm" onclick="editarReg(${r.rowIndex})">E</button>
         <button class="btn btn-sm" style="color:red" onclick="excluirReg(${r.rowIndex})">X</button>
@@ -386,7 +388,7 @@ function abrirModalRegistro(idx) {
   const modal = document.getElementById('modalRegistro');
   if (modal) modal.style.display = 'flex';
 
-  const reqAss = !!(state.currentBoletimData && state.currentBoletimData.requerAssinatura);
+  const reqAss = state.currentBoletimData ? !!state.currentBoletimData.requerAssinatura : false;
   const assSection = document.getElementById('assinaturaSection');
   if (assSection) assSection.style.display = reqAss ? 'block' : 'none';
   resetAssinatura();
