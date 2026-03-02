@@ -4,7 +4,7 @@
 // =====================================================
 
 // ID da planilha - SUBSTITUIR pelo ID real da sua planilha Google Sheets
-const SPREADSHEET_ID = 'COLE_O_ID_DA_SUA_PLANILHA_AQUI';
+const SPREADSHEET_ID = '1LMQcwrQUvXJBzY-FyOYs0WW8tRWTmFhHY208utKatYA';
 
 // Nomes das abas
 const ABA_BOLETINS = 'Boletins';
@@ -13,6 +13,7 @@ const ABA_TRANSPORTADORES = 'Transportadores';
 const ABA_MOTORISTAS = 'Motoristas';
 const ABA_VEICULOS = 'Veiculos';
 const ABA_ROTAS = 'Rotas';
+const ABA_PAGINA1 = 'Página1';
 
 // =====================================================
 // CONFIGURAÇÃO INICIAL DA PLANILHA
@@ -118,6 +119,8 @@ function doGet(e) {
         return jsonResponse(getBoletim(e.parameter.id));
       case 'getRegistros':
         return jsonResponse(getRegistros(e.parameter.boletimId));
+      case 'buscarVeiculoPorCodigo':
+        return jsonResponse(buscarVeiculoPorCodigo(e.parameter.codigo));
       default:
         return jsonResponse({ error: 'Ação não reconhecida' });
     }
@@ -471,4 +474,32 @@ function adicionarRota(data) {
   const id = Utilities.getUuid();
   aba.appendRow([id, data.nome]);
   return { success: true, id: id, message: 'Rota adicionada!' };
+}
+
+// =====================================================
+// BUSCAR VEÍCULO POR CÓDIGO NA PÁGINA1
+// Página1: A=Fornecedor, B=Cod, C=cod.fornecedor, D=placa, E=Rota
+// =====================================================
+function buscarVeiculoPorCodigo(codigo) {
+  if (!codigo) return { success: false, error: 'Código não informado' };
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const aba = ss.getSheetByName(ABA_PAGINA1);
+  if (!aba) return { success: false, error: 'Aba Página1 não encontrada' };
+  const dados = aba.getDataRange().getValues();
+  const codigoBusca = String(codigo).trim();
+  for (let i = 1; i < dados.length; i++) {
+    if (String(dados[i][1]).trim() == codigoBusca) {
+      return {
+        success: true,
+        data: {
+          transportador: dados[i][0],
+          codVeiculo: dados[i][1],
+          codFornecedor: dados[i][2],
+          placa: dados[i][3],
+          rota: dados[i][4]
+        }
+      };
+    }
+  }
+  return { success: false, error: 'Veículo com código ' + codigo + ' não encontrado' };
 }

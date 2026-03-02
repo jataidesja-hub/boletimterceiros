@@ -1,15 +1,19 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Boletim Diário - Transportes de Trabalhadores</title>
     <meta name="description" content="Sistema de Boletim Diário para controle de Transportes de Trabalhadores">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚌</text></svg>">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚌</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
@@ -127,7 +131,9 @@
                                     </tr>
                                 </thead>
                                 <tbody id="recentBoletins">
-                                    <tr><td colspan="6" class="empty-state">Carregando...</td></tr>
+                                    <tr>
+                                        <td colspan="6" class="empty-state">Carregando...</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -159,7 +165,9 @@
                                     </tr>
                                 </thead>
                                 <tbody id="allBoletins">
-                                    <tr><td colspan="7" class="empty-state">Carregando...</td></tr>
+                                    <tr>
+                                        <td colspan="7" class="empty-state">Carregando...</td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -174,37 +182,52 @@
                         <h2><span class="material-icons-round">add_circle</span> Novo Boletim</h2>
                     </div>
                     <div class="card-body">
-                        <form id="formNovoBoletim" class="form-grid">
+                        <!-- Buscar por código -->
+                        <div class="search-code-bar">
                             <div class="form-group">
-                                <label for="selTransportador">Transportador</label>
-                                <select id="selTransportador" required>
-                                    <option value="">Selecione...</option>
-                                </select>
+                                <label for="inputCodVeiculo">Código do Veículo</label>
+                                <div class="input-with-btn">
+                                    <input type="text" id="inputCodVeiculo" placeholder="Ex: 5214" autocomplete="off">
+                                    <button type="button" class="btn btn-primary" id="btnBuscarCodigo"
+                                        onclick="buscarPorCodigo()">
+                                        <span class="material-icons-round">search</span> Buscar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="veiculoFeedback" class="veiculo-feedback"></div>
+
+                        <form id="formNovoBoletim" class="form-grid" style="margin-top: 16px;">
+                            <div class="form-group">
+                                <label>Transportador</label>
+                                <input type="text" id="autoTransportador" readonly class="field-readonly">
                             </div>
                             <div class="form-group">
-                                <label for="selMotorista">Motorista</label>
-                                <select id="selMotorista" required>
-                                    <option value="">Selecione o transportador primeiro</option>
-                                </select>
+                                <label>Placa</label>
+                                <input type="text" id="autoPlaca" readonly class="field-readonly">
                             </div>
                             <div class="form-group">
-                                <label for="selVeiculo">Veículo (Placa / Cód.)</label>
-                                <select id="selVeiculo" required>
-                                    <option value="">Selecione o transportador primeiro</option>
-                                </select>
+                                <label>Cód. Veículo</label>
+                                <input type="text" id="autoCodVeiculo" readonly class="field-readonly">
                             </div>
                             <div class="form-group">
-                                <label for="selRota">Rota</label>
-                                <select id="selRota" required>
-                                    <option value="">Selecione...</option>
-                                </select>
+                                <label>Cód. Fornecedor</label>
+                                <input type="text" id="autoCodFornecedor" readonly class="field-readonly">
+                            </div>
+                            <div class="form-group">
+                                <label>Rota</label>
+                                <input type="text" id="autoRota" readonly class="field-readonly">
+                            </div>
+                            <div class="form-group">
+                                <label for="inputMotorista">Motorista</label>
+                                <input type="text" id="inputMotorista" placeholder="Nome do motorista" required>
                             </div>
                             <div class="form-group">
                                 <label for="mesReferencia">Mês de Referência</label>
                                 <input type="month" id="mesReferencia" required>
                             </div>
                             <div class="form-actions">
-                                <button type="submit" class="btn btn-primary btn-lg">
+                                <button type="submit" class="btn btn-primary btn-lg" id="btnCriarBoletim" disabled>
                                     <span class="material-icons-round">save</span> Criar Boletim
                                 </button>
                             </div>
@@ -253,7 +276,9 @@
                                     </tr>
                                 </thead>
                                 <tbody id="registrosDiarios">
-                                    <tr><td colspan="13" class="empty-state">Carregando...</td></tr>
+                                    <tr>
+                                        <td colspan="13" class="empty-state">Carregando...</td>
+                                    </tr>
                                 </tbody>
                                 <tfoot id="registrosTfoot">
                                 </tfoot>
@@ -287,9 +312,15 @@
                             </form>
                             <div class="table-wrapper">
                                 <table class="data-table">
-                                    <thead><tr><th>Nome</th></tr></thead>
+                                    <thead>
+                                        <tr>
+                                            <th>Nome</th>
+                                        </tr>
+                                    </thead>
                                     <tbody id="listaTransportadores">
-                                        <tr><td class="empty-state">Carregando...</td></tr>
+                                        <tr>
+                                            <td class="empty-state">Carregando...</td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -315,9 +346,16 @@
                             </form>
                             <div class="table-wrapper">
                                 <table class="data-table">
-                                    <thead><tr><th>Nome</th><th>Transportador</th></tr></thead>
+                                    <thead>
+                                        <tr>
+                                            <th>Nome</th>
+                                            <th>Transportador</th>
+                                        </tr>
+                                    </thead>
                                     <tbody id="listaMotoristas">
-                                        <tr><td colspan="2" class="empty-state">Carregando...</td></tr>
+                                        <tr>
+                                            <td colspan="2" class="empty-state">Carregando...</td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -344,9 +382,17 @@
                             </form>
                             <div class="table-wrapper">
                                 <table class="data-table">
-                                    <thead><tr><th>Placa</th><th>Cód. Veículo</th><th>Transportador</th></tr></thead>
+                                    <thead>
+                                        <tr>
+                                            <th>Placa</th>
+                                            <th>Cód. Veículo</th>
+                                            <th>Transportador</th>
+                                        </tr>
+                                    </thead>
                                     <tbody id="listaVeiculos">
-                                        <tr><td colspan="3" class="empty-state">Carregando...</td></tr>
+                                        <tr>
+                                            <td colspan="3" class="empty-state">Carregando...</td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -369,9 +415,15 @@
                             </form>
                             <div class="table-wrapper">
                                 <table class="data-table">
-                                    <thead><tr><th>Nome</th></tr></thead>
+                                    <thead>
+                                        <tr>
+                                            <th>Nome</th>
+                                        </tr>
+                                    </thead>
                                     <tbody id="listaRotas">
-                                        <tr><td class="empty-state">Carregando...</td></tr>
+                                        <tr>
+                                            <td class="empty-state">Carregando...</td>
+                                        </tr>
                                     </tbody>
                                 </table>
                             </div>
@@ -469,4 +521,5 @@
 
     <script src="app.js"></script>
 </body>
+
 </html>

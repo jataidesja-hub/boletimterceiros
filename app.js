@@ -128,11 +128,12 @@ function setupForms() {
   // Novo Boletim
   document.getElementById('formNovoBoletim').addEventListener('submit', submitNovoBoletim);
 
-  // Transportador change -> update motoristas & veiculos
-  document.getElementById('selTransportador').addEventListener('change', (e) => {
-    const transp = e.target.value;
-    loadMotoristasByTransportador(transp);
-    loadVeiculosByTransportador(transp);
+  // Buscar código com Enter
+  document.getElementById('inputCodVeiculo').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      buscarPorCodigo();
+    }
   });
 
   // Registro diário
@@ -354,28 +355,63 @@ async function confirmarExcluirBoletim(id) {
 
 // ===================== NOVO BOLETIM =====================
 async function loadFormSelects() {
+  // Set default month
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  document.getElementById('mesReferencia').value = `${now.getFullYear()}-${month}`;
+  // Limpar campos
+  limparAutoFill();
+}
+
+function limparAutoFill() {
+  document.getElementById('autoTransportador').value = '';
+  document.getElementById('autoPlaca').value = '';
+  document.getElementById('autoCodVeiculo').value = '';
+  document.getElementById('autoCodFornecedor').value = '';
+  document.getElementById('autoRota').value = '';
+  document.getElementById('inputMotorista').value = '';
+  document.getElementById('btnCriarBoletim').disabled = true;
+  document.getElementById('veiculoFeedback').textContent = '';
+  document.getElementById('veiculoFeedback').className = 'veiculo-feedback';
+}
+
+async function buscarPorCodigo() {
+  const codigo = document.getElementById('inputCodVeiculo').value.trim();
+  const feedback = document.getElementById('veiculoFeedback');
+
+  if (!codigo) {
+    feedback.textContent = 'Digite um código para buscar.';
+    feedback.className = 'veiculo-feedback error';
+    return;
+  }
+
+  feedback.textContent = 'Buscando...';
+  feedback.className = 'veiculo-feedback';
   showLoading();
+
   try {
-    const [transp, rotas] = await Promise.all([
-      apiGet('getTransportadores'),
-      apiGet('getRotas')
-    ]);
-
-    if (transp.success) {
-      state.transportadores = transp.data;
-      fillSelect('selTransportador', transp.data.map(t => ({ value: t.nome, label: t.nome })));
+    const res = await apiGet('buscarVeiculoPorCodigo', { codigo });
+    if (res.success) {
+      const v = res.data;
+      document.getElementById('autoTransportador').value = v.transportador || '';
+      document.getElementById('autoPlaca').value = v.placa || '';
+      document.getElementById('autoCodVeiculo').value = v.codVeiculo || '';
+      document.getElementById('autoCodFornecedor').value = v.codFornecedor || '';
+      document.getElementById('autoRota').value = v.rota || '';
+      document.getElementById('btnCriarBoletim').disabled = false;
+      feedback.textContent = '✓ Veículo encontrado: ' + v.placa + ' - ' + v.transportador;
+      feedback.className = 'veiculo-feedback success';
+      // Focar no motorista
+      document.getElementById('inputMotorista').focus();
+    } else {
+      limparAutoFill();
+      feedback.textContent = '✗ ' + res.error;
+      feedback.className = 'veiculo-feedback error';
     }
-
-    if (rotas.success) {
-      state.rotas = rotas.data;
-      fillSelect('selRota', rotas.data.map(r => ({ value: r.nome, label: r.nome })));
-    }
-
-    // Set default month
-    const now = new Date();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    document.getElementById('mesReferencia').value = `${now.getFullYear()}-${month}`;
-  } catch (err) { /* handled */ }
+  } catch (err) {
+    feedback.textContent = '✗ Erro de conexão';
+    feedback.className = 'veiculo-feedback error';
+  }
   hideLoading();
 }
 
@@ -388,49 +424,33 @@ function fillSelect(id, options, placeholder) {
   });
 }
 
-async function loadMotoristasByTransportador(transportador) {
-  if (!transportador) {
-    fillSelect('selMotorista', [], 'Selecione o transportador primeiro');
-    return;
-  }
-  try {
-    const res = await apiGet('getMotoristas', { transportador });
-    if (res.success) {
-      state.motoristas = res.data;
-      fillSelect('selMotorista', res.data.map(m => ({ value: m.nome, label: m.nome })));
-    }
-  } catch (err) { /* handled */ }
-}
-
-async function loadVeiculosByTransportador(transportador) {
-  if (!transportador) {
-    fillSelect('selVeiculo', [], 'Selecione o transportador primeiro');
-    return;
-  }
-  try {
-    const res = await apiGet('getVeiculos', { transportador });
-    if (res.success) {
-      state.veiculos = res.data;
-      fillSelect('selVeiculo', res.data.map(v => ({
-        value: `${v.placa}|${v.codVeiculo}`,
-        label: `${v.placa} - Cód: ${v.codVeiculo}`
-      })));
-    }
-  } catch (err) { /* handled */ }
-}
-
 async function submitNovoBoletim(e) {
   e.preventDefault();
-  const veiculoVal = document.getElementById('selVeiculo').value.split('|');
+
+  const transportador = document.getElementById('autoTransportador').value;
+  const placa = document.getElementById('autoPlaca').value;
+  const codVeiculo = document.getElementById('autoCodVeiculo').value;
+  const rota = document.getElementById('autoRota').value;
+  const motorista = document.getElementById('inputMotorista').value.trim();
+  const mesReferencia = document.getElementById('mesReferencia').value;
+
+  if (!transportador || !placa) {
+    showToast('Busque um veículo pelo código primeiro!', 'error');
+    return;
+  }
+  if (!motorista) {
+    showToast('Informe o nome do motorista!', 'error');
+    return;
+  }
 
   const data = {
     action: 'criarBoletim',
-    transportador: document.getElementById('selTransportador').value,
-    motorista: document.getElementById('selMotorista').value,
-    placa: veiculoVal[0],
-    codVeiculo: veiculoVal[1] || '',
-    rota: document.getElementById('selRota').value,
-    mesReferencia: document.getElementById('mesReferencia').value
+    transportador,
+    motorista,
+    placa,
+    codVeiculo,
+    rota,
+    mesReferencia
   };
 
   showLoading();
@@ -438,12 +458,12 @@ async function submitNovoBoletim(e) {
     const res = await apiPost(data);
     if (res.success) {
       showToast(res.message, 'success');
-      e.target.reset();
+      limparAutoFill();
+      document.getElementById('inputCodVeiculo').value = '';
+      document.getElementById('formNovoBoletim').reset();
       state.currentBoletimId = res.id;
-      // Recarregar boletins
       const boletinsRes = await apiGet('getBoletins');
       if (boletinsRes.success) state.boletins = boletinsRes.data;
-      // Ir para detalhes
       navigateTo('detalhes-boletim', { id: res.id });
     } else {
       showToast(res.error, 'error');
