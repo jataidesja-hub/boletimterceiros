@@ -30,6 +30,14 @@ function formatarHora(val) {
   return String(val);
 }
 
+function formatarMes(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, 'America/Sao_Paulo', 'yyyy-MM');
+  }
+  return String(val);
+}
+
 // =====================================================
 // CONFIGURAÇÃO INICIAL
 // =====================================================
@@ -283,7 +291,7 @@ function getBoletins(usuario) {
       placa: String(dados[i][3]),
       codVeiculo: String(dados[i][4]),
       rota: String(dados[i][5]),
-      mesReferencia: String(dados[i][6]),
+      mesReferencia: formatarMes(dados[i][6]),
       dataCriacao: String(dados[i][7]),
       usuario: String(dados[i][8])
     });
@@ -308,7 +316,7 @@ function getBoletim(id) {
           placa: String(dados[i][3]),
           codVeiculo: codV,
           rota: String(dados[i][5]),
-          mesReferencia: String(dados[i][6]),
+          mesReferencia: formatarMes(dados[i][6]),
           dataCriacao: String(dados[i][7]),
           usuario: String(dados[i][8]),
           requerAssinatura: requerAss
@@ -349,16 +357,21 @@ function excluirBoletim(data) {
 // =====================================================
 // REGISTROS DIÁRIOS
 // =====================================================
-function getRegistros(boletimId) {
+function getRegistros(e) {
+  const boletimId = String(e.parameter.boletimId || '');
+  if (!boletimId) return { success: false, error: 'boletimId não fornecido' };
+  
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const aba = ss.getSheetByName(ABA_REGISTROS);
+  if (!aba) return { success: true, data: [] };
+  
   const dados = aba.getDataRange().getValues();
   const resultado = [];
+  
   for (let i = 1; i < dados.length; i++) {
-    if (String(dados[i][0]) === String(boletimId)) {
+    if (String(dados[i][0]) === boletimId) {
       resultado.push({
         rowIndex: i + 1,
-        boletimId: String(dados[i][0]),
         data: formatarData(dados[i][1]),
         diaSemana: String(dados[i][2]),
         horaInicialIda: formatarHora(dados[i][3]),
@@ -371,7 +384,7 @@ function getRegistros(boletimId) {
         numPessoasVolta: String(dados[i][10]),
         objCusto: String(dados[i][11]),
         kmRodados: String(dados[i][12]),
-        assinatura: String(dados[i][13])
+        assinatura: String(dados[i][13] || '')
       });
     }
   }

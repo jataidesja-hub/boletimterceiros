@@ -349,11 +349,12 @@ async function abrirBoletimDetalhes(id) {
 }
 
 function renderBoletimInfo(b) {
+  const badgeHtml = b.requerAssinatura ? `<div class="badge-signature" style="margin-top:0"><span class="material-icons-round">qr_code_scanner</span> Requer Assinatura QR</div>` : '';
   document.getElementById('boletimInfoGrid').innerHTML = `
     <div class="info-item"><span class="label">Motorista</span><span class="value">${b.motorista}</span></div>
     <div class="info-item"><span class="label">Placa</span><span class="value">${b.placa}</span></div>
     <div class="info-item"><span class="label">Cód</span><span class="value">${b.codVeiculo}</span></div>
-    <div class="info-item"><span class="label">Mês</span><span class="value">${b.mesReferencia}</span></div>
+    <div class="info-item"><span class="label">Mês</span><span class="value">${b.mesReferencia} ${badgeHtml}</span></div>
   `;
 }
 
@@ -379,25 +380,30 @@ function renderRegistros(regs) {
 function abrirModalRegistro(idx) {
   state.editingRowIndex = idx || null;
   document.getElementById('formRegistro').reset();
-  document.getElementById('modalRegistro').style.display = 'flex';
-  document.getElementById('assinaturaSection').style.display = state.currentBoletimData.requerAssinatura ? 'block' : 'none';
+  const modal = document.getElementById('modalRegistro');
+  if (modal) modal.style.display = 'flex';
+
+  const reqAss = !!(state.currentBoletimData && state.currentBoletimData.requerAssinatura);
+  const assSection = document.getElementById('assinaturaSection');
+  if (assSection) assSection.style.display = reqAss ? 'block' : 'none';
   resetAssinatura();
 
   if (idx) {
     const r = state.registros.find(x => x.rowIndex === idx);
-    // Fill form... (simplified for brevity)
-    document.getElementById('regData').value = r.data.split('/').reverse().join('-');
-    document.getElementById('regObjCusto').value = r.objCusto;
-    document.getElementById('regHoraIniIda').value = r.horaInicialIda;
-    document.getElementById('regKmIniIda').value = r.kmInicialIda;
-    document.getElementById('regHoraFinIda').value = r.horaFinalIda;
-    document.getElementById('regPessoasIda').value = r.numPessoasIda;
-    document.getElementById('regHoraIniVolta').value = r.horaInicialVolta;
-    document.getElementById('regKmFinVolta').value = r.kmFinalVolta;
-    document.getElementById('regHoraFinVolta').value = r.horaFinalVolta;
-    document.getElementById('regPessoasVolta').value = r.numPessoasVolta;
-    document.getElementById('regAssinatura').value = r.assinatura;
-    if (r.assinatura) setAssinaturaOK();
+    if (r) {
+      document.getElementById('regData').value = r.data.split('/').reverse().join('-');
+      document.getElementById('regObjCusto').value = r.objCusto;
+      document.getElementById('regHoraIniIda').value = r.horaInicialIda;
+      document.getElementById('regKmIniIda').value = r.kmInicialIda;
+      document.getElementById('regHoraFinIda').value = r.horaFinalIda;
+      document.getElementById('regPessoasIda').value = r.numPessoasIda;
+      document.getElementById('regHoraIniVolta').value = r.horaInicialVolta;
+      document.getElementById('regKmFinVolta').value = r.kmFinalVolta;
+      document.getElementById('regHoraFinVolta').value = r.horaFinalVolta;
+      document.getElementById('regPessoasVolta').value = r.numPessoasVolta;
+      document.getElementById('regAssinatura').value = r.assinatura;
+      if (r.assinatura) setAssinaturaOK();
+    }
   }
 }
 
