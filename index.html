@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boletim Diário - Transportes de Trabalhadores</title>
+    <meta name="description" content="Sistema de Boletim Diário para controle de Transportes de Trabalhadores">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚌</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <span class="material-icons-round">directions_bus</span>
+                <span>Boletim</span>
+            </div>
+            <button class="sidebar-close" id="sidebarClose">
+                <span class="material-icons-round">close</span>
+            </button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item active" data-page="dashboard">
+                <span class="material-icons-round">dashboard</span>
+                <span>Dashboard</span>
+            </a>
+            <a href="#" class="nav-item" data-page="boletins">
+                <span class="material-icons-round">description</span>
+                <span>Boletins</span>
+            </a>
+            <a href="#" class="nav-item" data-page="novo-boletim">
+                <span class="material-icons-round">add_circle</span>
+                <span>Novo Boletim</span>
+            </a>
+            <div class="nav-divider"></div>
+            <a href="#" class="nav-item" data-page="cadastros">
+                <span class="material-icons-round">settings</span>
+                <span>Cadastros</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="sidebar-version">v1.0.0</div>
+        </div>
+    </aside>
+
+    <!-- Overlay for mobile sidebar -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Top Bar -->
+        <header class="topbar">
+            <button class="menu-toggle" id="menuToggle">
+                <span class="material-icons-round">menu</span>
+            </button>
+            <h1 class="topbar-title" id="pageTitle">Dashboard</h1>
+            <div class="topbar-actions">
+                <div class="connection-status" id="connectionStatus">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Conectando...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Pages Container -->
+        <div class="page-container">
+
+            <!-- Dashboard Page -->
+            <section class="page active" id="page-dashboard">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon blue">
+                            <span class="material-icons-round">description</span>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="totalBoletins">0</span>
+                            <span class="stat-label">Boletins</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green">
+                            <span class="material-icons-round">event</span>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="totalRegistros">0</span>
+                            <span class="stat-label">Registros</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon purple">
+                            <span class="material-icons-round">route</span>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="totalKm">0</span>
+                            <span class="stat-label">KM Total</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon orange">
+                            <span class="material-icons-round">groups</span>
+                        </div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="totalPessoas">0</span>
+                            <span class="stat-label">Pessoas Transportadas</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2><span class="material-icons-round">history</span> Boletins Recentes</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Transportador</th>
+                                        <th>Motorista</th>
+                                        <th>Placa</th>
+                                        <th>Rota</th>
+                                        <th>Mês Ref.</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentBoletins">
+                                    <tr><td colspan="6" class="empty-state">Carregando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Boletins List Page -->
+            <section class="page" id="page-boletins">
+                <div class="card">
+                    <div class="card-header">
+                        <h2><span class="material-icons-round">list</span> Todos os Boletins</h2>
+                        <button class="btn btn-primary" onclick="navigateTo('novo-boletim')">
+                            <span class="material-icons-round">add</span> Novo
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-wrapper">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Transportador</th>
+                                        <th>Motorista</th>
+                                        <th>Placa</th>
+                                        <th>Cód. Veículo</th>
+                                        <th>Rota</th>
+                                        <th>Mês Ref.</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="allBoletins">
+                                    <tr><td colspan="7" class="empty-state">Carregando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Novo Boletim Page -->
+            <section class="page" id="page-novo-boletim">
+                <div class="card">
+                    <div class="card-header">
+                        <h2><span class="material-icons-round">add_circle</span> Novo Boletim</h2>
+                    </div>
+                    <div class="card-body">
+                        <form id="formNovoBoletim" class="form-grid">
+                            <div class="form-group">
+                                <label for="selTransportador">Transportador</label>
+                                <select id="selTransportador" required>
+                                    <option value="">Selecione...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="selMotorista">Motorista</label>
+                                <select id="selMotorista" required>
+                                    <option value="">Selecione o transportador primeiro</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="selVeiculo">Veículo (Placa / Cód.)</label>
+                                <select id="selVeiculo" required>
+                                    <option value="">Selecione o transportador primeiro</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="selRota">Rota</label>
+                                <select id="selRota" required>
+                                    <option value="">Selecione...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="mesReferencia">Mês de Referência</label>
+                                <input type="month" id="mesReferencia" required>
+                            </div>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <span class="material-icons-round">save</span> Criar Boletim
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Detalhes do Boletim Page -->
+            <section class="page" id="page-detalhes-boletim">
+                <div class="card boletim-header-card">
+                    <div class="boletim-info-grid" id="boletimInfoGrid">
+                        <!-- Preenchido via JS -->
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2><span class="material-icons-round">edit_calendar</span> Registros Diários</h2>
+                        <button class="btn btn-primary" id="btnAddRegistro" onclick="abrirModalRegistro()">
+                            <span class="material-icons-round">add</span> Adicionar Dia
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-wrapper">
+                            <table class="data-table boletim-table">
+                                <thead>
+                                    <tr>
+                                        <th rowspan="2">Data</th>
+                                        <th rowspan="2">Dia</th>
+                                        <th colspan="4" class="th-group ida">CIDADE → USINA</th>
+                                        <th colspan="4" class="th-group volta">USINA → CIDADE</th>
+                                        <th rowspan="2">Obj. Custo</th>
+                                        <th rowspan="2">KM Rod.</th>
+                                        <th rowspan="2">Ações</th>
+                                    </tr>
+                                    <tr>
+                                        <th class="sub ida">H. Ini</th>
+                                        <th class="sub ida">KM Ini</th>
+                                        <th class="sub ida">H. Fin</th>
+                                        <th class="sub ida">Pessoas</th>
+                                        <th class="sub volta">H. Ini</th>
+                                        <th class="sub volta">KM Fin</th>
+                                        <th class="sub volta">H. Fin</th>
+                                        <th class="sub volta">Pessoas</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="registrosDiarios">
+                                    <tr><td colspan="13" class="empty-state">Carregando...</td></tr>
+                                </tbody>
+                                <tfoot id="registrosTfoot">
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Cadastros Page -->
+            <section class="page" id="page-cadastros">
+                <div class="tabs">
+                    <button class="tab active" data-tab="tab-transportadores">Transportadores</button>
+                    <button class="tab" data-tab="tab-motoristas">Motoristas</button>
+                    <button class="tab" data-tab="tab-veiculos">Veículos</button>
+                    <button class="tab" data-tab="tab-rotas">Rotas</button>
+                </div>
+
+                <!-- Transportadores Tab -->
+                <div class="tab-content active" id="tab-transportadores">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>Transportadores</h2>
+                        </div>
+                        <div class="card-body">
+                            <form class="inline-form" id="formTransportador">
+                                <input type="text" placeholder="Nome do transportador" id="nomeTransportador" required>
+                                <button type="submit" class="btn btn-primary">
+                                    <span class="material-icons-round">add</span> Adicionar
+                                </button>
+                            </form>
+                            <div class="table-wrapper">
+                                <table class="data-table">
+                                    <thead><tr><th>Nome</th></tr></thead>
+                                    <tbody id="listaTransportadores">
+                                        <tr><td class="empty-state">Carregando...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Motoristas Tab -->
+                <div class="tab-content" id="tab-motoristas">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>Motoristas</h2>
+                        </div>
+                        <div class="card-body">
+                            <form class="inline-form" id="formMotorista">
+                                <select id="transpMotorista" required>
+                                    <option value="">Transportador...</option>
+                                </select>
+                                <input type="text" placeholder="Nome do motorista" id="nomeMotorista" required>
+                                <button type="submit" class="btn btn-primary">
+                                    <span class="material-icons-round">add</span> Adicionar
+                                </button>
+                            </form>
+                            <div class="table-wrapper">
+                                <table class="data-table">
+                                    <thead><tr><th>Nome</th><th>Transportador</th></tr></thead>
+                                    <tbody id="listaMotoristas">
+                                        <tr><td colspan="2" class="empty-state">Carregando...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Veículos Tab -->
+                <div class="tab-content" id="tab-veiculos">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>Veículos</h2>
+                        </div>
+                        <div class="card-body">
+                            <form class="inline-form" id="formVeiculo">
+                                <select id="transpVeiculo" required>
+                                    <option value="">Transportador...</option>
+                                </select>
+                                <input type="text" placeholder="Placa" id="placaVeiculo" required>
+                                <input type="text" placeholder="Cód. Veículo" id="codVeiculo" required>
+                                <button type="submit" class="btn btn-primary">
+                                    <span class="material-icons-round">add</span> Adicionar
+                                </button>
+                            </form>
+                            <div class="table-wrapper">
+                                <table class="data-table">
+                                    <thead><tr><th>Placa</th><th>Cód. Veículo</th><th>Transportador</th></tr></thead>
+                                    <tbody id="listaVeiculos">
+                                        <tr><td colspan="3" class="empty-state">Carregando...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rotas Tab -->
+                <div class="tab-content" id="tab-rotas">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>Rotas</h2>
+                        </div>
+                        <div class="card-body">
+                            <form class="inline-form" id="formRota">
+                                <input type="text" placeholder="Nome da rota (ex: M-54)" id="nomeRota" required>
+                                <button type="submit" class="btn btn-primary">
+                                    <span class="material-icons-round">add</span> Adicionar
+                                </button>
+                            </form>
+                            <div class="table-wrapper">
+                                <table class="data-table">
+                                    <thead><tr><th>Nome</th></tr></thead>
+                                    <tbody id="listaRotas">
+                                        <tr><td class="empty-state">Carregando...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Modal Registro Diário -->
+    <div class="modal-overlay" id="modalRegistro">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalRegistroTitle">Adicionar Registro Diário</h3>
+                <button class="modal-close" onclick="fecharModalRegistro()">
+                    <span class="material-icons-round">close</span>
+                </button>
+            </div>
+            <form id="formRegistro">
+                <div class="modal-body">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="regData">Data</label>
+                            <input type="date" id="regData" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="regObjCusto">Obj. Custo</label>
+                            <input type="text" id="regObjCusto" placeholder="Ex: 649">
+                        </div>
+                    </div>
+
+                    <div class="section-divider">
+                        <span class="material-icons-round">arrow_forward</span> CIDADE → USINA (Ida)
+                    </div>
+                    <div class="form-grid cols-4">
+                        <div class="form-group">
+                            <label for="regHoraIniIda">Hora Inicial</label>
+                            <input type="time" id="regHoraIniIda">
+                        </div>
+                        <div class="form-group">
+                            <label for="regKmIniIda">KM Inicial</label>
+                            <input type="number" id="regKmIniIda" step="1">
+                        </div>
+                        <div class="form-group">
+                            <label for="regHoraFinIda">Hora Final</label>
+                            <input type="time" id="regHoraFinIda">
+                        </div>
+                        <div class="form-group">
+                            <label for="regPessoasIda">Nº Pessoas</label>
+                            <input type="number" id="regPessoasIda" min="0">
+                        </div>
+                    </div>
+
+                    <div class="section-divider">
+                        <span class="material-icons-round">arrow_back</span> USINA → CIDADE (Volta)
+                    </div>
+                    <div class="form-grid cols-4">
+                        <div class="form-group">
+                            <label for="regHoraIniVolta">Hora Inicial</label>
+                            <input type="time" id="regHoraIniVolta">
+                        </div>
+                        <div class="form-group">
+                            <label for="regKmFinVolta">KM Final</label>
+                            <input type="number" id="regKmFinVolta" step="1">
+                        </div>
+                        <div class="form-group">
+                            <label for="regHoraFinVolta">Hora Final</label>
+                            <input type="time" id="regHoraFinVolta">
+                        </div>
+                        <div class="form-group">
+                            <label for="regPessoasVolta">Nº Pessoas</label>
+                            <input type="number" id="regPessoasVolta" min="0">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="fecharModalRegistro()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="material-icons-round">save</span> Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
