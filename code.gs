@@ -1,18 +1,14 @@
 // =====================================================
 // BOLETIM DIÁRIO - TRANSPORTES DE TRABALHADORES
-// Google Apps Script Backend
+// Google Apps Script Backend (v2 - com Login)
 // =====================================================
 
-// ID da planilha - SUBSTITUIR pelo ID real da sua planilha Google Sheets
 const SPREADSHEET_ID = '1LMQcwrQUvXJBzY-FyOYs0WW8tRWTmFhHY208utKatYA';
 
 // Nomes das abas
 const ABA_BOLETINS = 'Boletins';
 const ABA_REGISTROS = 'Registros';
-const ABA_TRANSPORTADORES = 'Transportadores';
-const ABA_MOTORISTAS = 'Motoristas';
-const ABA_VEICULOS = 'Veiculos';
-const ABA_ROTAS = 'Rotas';
+const ABA_USUARIOS = 'Usuarios';
 const ABA_PAGINA1 = 'Página1';
 
 // =====================================================
@@ -21,19 +17,31 @@ const ABA_PAGINA1 = 'Página1';
 function configurarPlanilha() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
 
-  // Aba Boletins (cabeçalho do boletim)
+  // Aba Usuarios (login motoristas)
+  let abaUsuarios = ss.getSheetByName(ABA_USUARIOS);
+  if (!abaUsuarios) {
+    abaUsuarios = ss.insertSheet(ABA_USUARIOS);
+  }
+  abaUsuarios.clear();
+  abaUsuarios.getRange('A1:D1').setValues([['Usuario', 'Senha', 'Nome_Completo', 'Perfil']]);
+  abaUsuarios.getRange('A1:D1').setFontWeight('bold');
+  abaUsuarios.setFrozenRows(1);
+  // Adicionar admin padrão
+  abaUsuarios.appendRow(['admin', 'admin123', 'Administrador', 'admin']);
+
+  // Aba Boletins
   let abaBoletins = ss.getSheetByName(ABA_BOLETINS);
   if (!abaBoletins) {
     abaBoletins = ss.insertSheet(ABA_BOLETINS);
   }
   abaBoletins.clear();
-  abaBoletins.getRange('A1:H1').setValues([[
-    'ID', 'Transportador', 'Motorista', 'Placa', 'Cod_Veiculo', 'Rota', 'Mes_Referencia', 'Data_Criacao'
+  abaBoletins.getRange('A1:I1').setValues([[
+    'ID', 'Transportador', 'Motorista', 'Placa', 'Cod_Veiculo', 'Rota', 'Mes_Referencia', 'Data_Criacao', 'Usuario'
   ]]);
-  abaBoletins.getRange('A1:H1').setFontWeight('bold');
+  abaBoletins.getRange('A1:I1').setFontWeight('bold');
   abaBoletins.setFrozenRows(1);
 
-  // Aba Registros (linhas diárias)
+  // Aba Registros
   let abaRegistros = ss.getSheetByName(ABA_REGISTROS);
   if (!abaRegistros) {
     abaRegistros = ss.insertSheet(ABA_REGISTROS);
@@ -48,52 +56,6 @@ function configurarPlanilha() {
   abaRegistros.getRange('A1:N1').setFontWeight('bold');
   abaRegistros.setFrozenRows(1);
 
-  // Aba Transportadores (cadastro)
-  let abaTransp = ss.getSheetByName(ABA_TRANSPORTADORES);
-  if (!abaTransp) {
-    abaTransp = ss.insertSheet(ABA_TRANSPORTADORES);
-  }
-  abaTransp.clear();
-  abaTransp.getRange('A1:B1').setValues([['ID', 'Nome']]);
-  abaTransp.getRange('A1:B1').setFontWeight('bold');
-  abaTransp.setFrozenRows(1);
-
-  // Aba Motoristas (cadastro)
-  let abaMotoristas = ss.getSheetByName(ABA_MOTORISTAS);
-  if (!abaMotoristas) {
-    abaMotoristas = ss.insertSheet(ABA_MOTORISTAS);
-  }
-  abaMotoristas.clear();
-  abaMotoristas.getRange('A1:C1').setValues([['ID', 'Nome', 'Transportador']]);
-  abaMotoristas.getRange('A1:C1').setFontWeight('bold');
-  abaMotoristas.setFrozenRows(1);
-
-  // Aba Veículos (cadastro)
-  let abaVeiculos = ss.getSheetByName(ABA_VEICULOS);
-  if (!abaVeiculos) {
-    abaVeiculos = ss.insertSheet(ABA_VEICULOS);
-  }
-  abaVeiculos.clear();
-  abaVeiculos.getRange('A1:D1').setValues([['ID', 'Placa', 'Cod_Veiculo', 'Transportador']]);
-  abaVeiculos.getRange('A1:D1').setFontWeight('bold');
-  abaVeiculos.setFrozenRows(1);
-
-  // Aba Rotas (cadastro)
-  let abaRotas = ss.getSheetByName(ABA_ROTAS);
-  if (!abaRotas) {
-    abaRotas = ss.insertSheet(ABA_ROTAS);
-  }
-  abaRotas.clear();
-  abaRotas.getRange('A1:B1').setValues([['ID', 'Nome']]);
-  abaRotas.getRange('A1:B1').setFontWeight('bold');
-  abaRotas.setFrozenRows(1);
-
-  // Remover aba padrão "Sheet1" se existir
-  const sheet1 = ss.getSheetByName('Sheet1');
-  if (sheet1) {
-    ss.deleteSheet(sheet1);
-  }
-
   Logger.log('Planilha configurada com sucesso!');
 }
 
@@ -102,25 +64,22 @@ function configurarPlanilha() {
 // =====================================================
 function doGet(e) {
   const action = e.parameter.action;
-
   try {
     switch (action) {
-      case 'getTransportadores':
-        return jsonResponse(getTransportadores());
-      case 'getMotoristas':
-        return jsonResponse(getMotoristas(e.parameter.transportador));
-      case 'getVeiculos':
-        return jsonResponse(getVeiculos(e.parameter.transportador));
-      case 'getRotas':
-        return jsonResponse(getRotas());
+      case 'login':
+        return jsonResponse(login(e.parameter.usuario, e.parameter.senha));
+      case 'getVeiculosMotorista':
+        return jsonResponse(getVeiculosMotorista(e.parameter.motorista));
       case 'getBoletins':
-        return jsonResponse(getBoletins());
+        return jsonResponse(getBoletins(e.parameter.usuario));
       case 'getBoletim':
         return jsonResponse(getBoletim(e.parameter.id));
       case 'getRegistros':
         return jsonResponse(getRegistros(e.parameter.boletimId));
       case 'buscarVeiculoPorCodigo':
         return jsonResponse(buscarVeiculoPorCodigo(e.parameter.codigo));
+      case 'getUsuarios':
+        return jsonResponse(getUsuarios());
       default:
         return jsonResponse({ error: 'Ação não reconhecida' });
     }
@@ -133,28 +92,19 @@ function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
     const action = data.action;
-
     switch (action) {
       case 'criarBoletim':
         return jsonResponse(criarBoletim(data));
       case 'salvarRegistro':
         return jsonResponse(salvarRegistro(data));
-      case 'salvarRegistros':
-        return jsonResponse(salvarRegistros(data));
       case 'editarRegistro':
         return jsonResponse(editarRegistro(data));
       case 'excluirRegistro':
         return jsonResponse(excluirRegistro(data));
-      case 'adicionarTransportador':
-        return jsonResponse(adicionarTransportador(data));
-      case 'adicionarMotorista':
-        return jsonResponse(adicionarMotorista(data));
-      case 'adicionarVeiculo':
-        return jsonResponse(adicionarVeiculo(data));
-      case 'adicionarRota':
-        return jsonResponse(adicionarRota(data));
       case 'excluirBoletim':
         return jsonResponse(excluirBoletim(data));
+      case 'cadastrarUsuario':
+        return jsonResponse(cadastrarUsuario(data));
       default:
         return jsonResponse({ error: 'Ação não reconhecida' });
     }
@@ -170,74 +120,128 @@ function jsonResponse(data) {
 }
 
 // =====================================================
-// FUNÇÕES DE CADASTRO (GET)
+// LOGIN
 // =====================================================
-function getTransportadores() {
+function login(usuario, senha) {
+  if (!usuario || !senha) return { success: false, error: 'Usuário e senha obrigatórios' };
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const aba = ss.getSheetByName(ABA_TRANSPORTADORES);
+  const aba = ss.getSheetByName(ABA_USUARIOS);
+  if (!aba) return { success: false, error: 'Aba Usuarios não encontrada. Execute configurarPlanilha.' };
   const dados = aba.getDataRange().getValues();
-  const resultado = [];
   for (let i = 1; i < dados.length; i++) {
-    resultado.push({ id: dados[i][0], nome: dados[i][1] });
-  }
-  return { success: true, data: resultado };
-}
-
-function getMotoristas(transportador) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const aba = ss.getSheetByName(ABA_MOTORISTAS);
-  const dados = aba.getDataRange().getValues();
-  const resultado = [];
-  for (let i = 1; i < dados.length; i++) {
-    if (!transportador || dados[i][2] === transportador) {
-      resultado.push({ id: dados[i][0], nome: dados[i][1], transportador: dados[i][2] });
+    if (String(dados[i][0]).trim().toLowerCase() === String(usuario).trim().toLowerCase() &&
+        String(dados[i][1]).trim() === String(senha).trim()) {
+      return {
+        success: true,
+        data: {
+          usuario: dados[i][0],
+          nomeCompleto: dados[i][2],
+          perfil: dados[i][3] || 'motorista'
+        }
+      };
     }
   }
-  return { success: true, data: resultado };
+  return { success: false, error: 'Usuário ou senha inválidos' };
 }
 
-function getVeiculos(transportador) {
+function getUsuarios() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const aba = ss.getSheetByName(ABA_VEICULOS);
+  const aba = ss.getSheetByName(ABA_USUARIOS);
   const dados = aba.getDataRange().getValues();
   const resultado = [];
   for (let i = 1; i < dados.length; i++) {
-    if (!transportador || dados[i][3] === transportador) {
-      resultado.push({ id: dados[i][0], placa: dados[i][1], codVeiculo: dados[i][2], transportador: dados[i][3] });
+    resultado.push({
+      usuario: dados[i][0],
+      nomeCompleto: dados[i][2],
+      perfil: dados[i][3] || 'motorista'
+    });
+  }
+  return { success: true, data: resultado };
+}
+
+function cadastrarUsuario(data) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const aba = ss.getSheetByName(ABA_USUARIOS);
+  // Verificar se já existe
+  const dados = aba.getDataRange().getValues();
+  for (let i = 1; i < dados.length; i++) {
+    if (String(dados[i][0]).trim().toLowerCase() === String(data.usuario).trim().toLowerCase()) {
+      return { success: false, error: 'Usuário já existe' };
     }
   }
-  return { success: true, data: resultado };
+  aba.appendRow([data.usuario, data.senha, data.nomeCompleto, data.perfil || 'motorista']);
+  return { success: true, message: 'Usuário cadastrado com sucesso!' };
 }
 
-function getRotas() {
+// =====================================================
+// VEÍCULOS DO MOTORISTA (PÁGINA1)
+// Página1: A=Fornecedor(Transportador), B=Cod, C=cod.fornecedor, D=placa, E=Rota
+// =====================================================
+function getVeiculosMotorista(motorista) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const aba = ss.getSheetByName(ABA_ROTAS);
+  const aba = ss.getSheetByName(ABA_PAGINA1);
+  if (!aba) return { success: false, error: 'Aba Página1 não encontrada' };
   const dados = aba.getDataRange().getValues();
   const resultado = [];
+  const nomeBusca = String(motorista).trim().toUpperCase();
   for (let i = 1; i < dados.length; i++) {
-    resultado.push({ id: dados[i][0], nome: dados[i][1] });
+    // Retorna todos os veículos (o motorista escolhe qual está dirigindo)
+    resultado.push({
+      transportador: String(dados[i][0]),
+      codVeiculo: String(dados[i][1]),
+      codFornecedor: String(dados[i][2]),
+      placa: String(dados[i][3]),
+      rota: String(dados[i][4])
+    });
   }
   return { success: true, data: resultado };
 }
 
+function buscarVeiculoPorCodigo(codigo) {
+  if (!codigo) return { success: false, error: 'Código não informado' };
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const aba = ss.getSheetByName(ABA_PAGINA1);
+  if (!aba) return { success: false, error: 'Aba Página1 não encontrada' };
+  const dados = aba.getDataRange().getValues();
+  const codigoBusca = String(codigo).trim();
+  for (let i = 1; i < dados.length; i++) {
+    if (String(dados[i][1]).trim() == codigoBusca) {
+      return {
+        success: true,
+        data: {
+          transportador: String(dados[i][0]),
+          codVeiculo: String(dados[i][1]),
+          codFornecedor: String(dados[i][2]),
+          placa: String(dados[i][3]),
+          rota: String(dados[i][4])
+        }
+      };
+    }
+  }
+  return { success: false, error: 'Veículo com código ' + codigo + ' não encontrado' };
+}
+
 // =====================================================
-// FUNÇÕES DE BOLETIM
+// BOLETINS
 // =====================================================
-function getBoletins() {
+function getBoletins(usuario) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const aba = ss.getSheetByName(ABA_BOLETINS);
   const dados = aba.getDataRange().getValues();
   const resultado = [];
   for (let i = 1; i < dados.length; i++) {
+    // Se usuario informado, filtrar. Se admin, mostra tudo.
+    if (usuario && usuario !== 'admin' && String(dados[i][8]) !== usuario) continue;
     resultado.push({
       id: dados[i][0],
       transportador: dados[i][1],
       motorista: dados[i][2],
       placa: dados[i][3],
-      codVeiculo: dados[i][4],
+      codVeiculo: String(dados[i][4]),
       rota: dados[i][5],
       mesReferencia: dados[i][6],
-      dataCriacao: dados[i][7]
+      dataCriacao: dados[i][7],
+      usuario: dados[i][8]
     });
   }
   return { success: true, data: resultado };
@@ -248,7 +252,7 @@ function getBoletim(id) {
   const aba = ss.getSheetByName(ABA_BOLETINS);
   const dados = aba.getDataRange().getValues();
   for (let i = 1; i < dados.length; i++) {
-    if (dados[i][0] == id) {
+    if (String(dados[i][0]) === String(id)) {
       return {
         success: true,
         data: {
@@ -256,10 +260,11 @@ function getBoletim(id) {
           transportador: dados[i][1],
           motorista: dados[i][2],
           placa: dados[i][3],
-          codVeiculo: dados[i][4],
+          codVeiculo: String(dados[i][4]),
           rota: dados[i][5],
           mesReferencia: dados[i][6],
-          dataCriacao: dados[i][7]
+          dataCriacao: dados[i][7],
+          usuario: dados[i][8]
         }
       };
     }
@@ -271,6 +276,7 @@ function criarBoletim(data) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const aba = ss.getSheetByName(ABA_BOLETINS);
   const id = Utilities.getUuid();
+  const agora = Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm');
 
   aba.appendRow([
     id,
@@ -280,7 +286,8 @@ function criarBoletim(data) {
     data.codVeiculo,
     data.rota,
     data.mesReferencia,
-    new Date().toISOString()
+    agora,
+    data.usuario || ''
   ]);
 
   return { success: true, id: id, message: 'Boletim criado com sucesso!' };
@@ -288,21 +295,17 @@ function criarBoletim(data) {
 
 function excluirBoletim(data) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-
-  // Excluir registros do boletim
   const abaReg = ss.getSheetByName(ABA_REGISTROS);
   const dadosReg = abaReg.getDataRange().getValues();
   for (let i = dadosReg.length - 1; i >= 1; i--) {
-    if (dadosReg[i][0] == data.id) {
+    if (String(dadosReg[i][0]) === String(data.id)) {
       abaReg.deleteRow(i + 1);
     }
   }
-
-  // Excluir o boletim
   const aba = ss.getSheetByName(ABA_BOLETINS);
   const dados = aba.getDataRange().getValues();
   for (let i = 1; i < dados.length; i++) {
-    if (dados[i][0] == data.id) {
+    if (String(dados[i][0]) === String(data.id)) {
       aba.deleteRow(i + 1);
       return { success: true, message: 'Boletim excluído com sucesso!' };
     }
@@ -311,7 +314,7 @@ function excluirBoletim(data) {
 }
 
 // =====================================================
-// FUNÇÕES DE REGISTROS DIÁRIOS
+// REGISTROS DIÁRIOS
 // =====================================================
 function getRegistros(boletimId) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -319,23 +322,23 @@ function getRegistros(boletimId) {
   const dados = aba.getDataRange().getValues();
   const resultado = [];
   for (let i = 1; i < dados.length; i++) {
-    if (dados[i][0] == boletimId) {
+    if (String(dados[i][0]) === String(boletimId)) {
       resultado.push({
         rowIndex: i + 1,
         boletimId: dados[i][0],
-        data: dados[i][1],
-        diaSemana: dados[i][2],
-        horaInicialIda: dados[i][3],
-        kmInicialIda: dados[i][4],
-        horaFinalIda: dados[i][5],
-        numPessoasIda: dados[i][6],
-        horaInicialVolta: dados[i][7],
-        kmFinalVolta: dados[i][8],
-        horaFinalVolta: dados[i][9],
-        numPessoasVolta: dados[i][10],
-        objCusto: dados[i][11],
-        kmRodados: dados[i][12],
-        assinatura: dados[i][13]
+        data: String(dados[i][1]),
+        diaSemana: String(dados[i][2]),
+        horaInicialIda: String(dados[i][3]),
+        kmInicialIda: String(dados[i][4]),
+        horaFinalIda: String(dados[i][5]),
+        numPessoasIda: String(dados[i][6]),
+        horaInicialVolta: String(dados[i][7]),
+        kmFinalVolta: String(dados[i][8]),
+        horaFinalVolta: String(dados[i][9]),
+        numPessoasVolta: String(dados[i][10]),
+        objCusto: String(dados[i][11]),
+        kmRodados: String(dados[i][12]),
+        assinatura: String(dados[i][13])
       });
     }
   }
@@ -346,7 +349,9 @@ function salvarRegistro(data) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const aba = ss.getSheetByName(ABA_REGISTROS);
 
-  const kmRodados = (parseFloat(data.kmFinalVolta) || 0) - (parseFloat(data.kmInicialIda) || 0);
+  const kmIni = parseFloat(data.kmInicialIda) || 0;
+  const kmFin = parseFloat(data.kmFinalVolta) || 0;
+  const kmRodados = kmFin > 0 && kmIni > 0 ? kmFin - kmIni : 0;
 
   aba.appendRow([
     data.boletimId,
@@ -368,46 +373,15 @@ function salvarRegistro(data) {
   return { success: true, message: 'Registro salvo com sucesso!' };
 }
 
-function salvarRegistros(data) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const aba = ss.getSheetByName(ABA_REGISTROS);
-  const registros = data.registros;
-  let count = 0;
-
-  for (const reg of registros) {
-    const kmRodados = (parseFloat(reg.kmFinalVolta) || 0) - (parseFloat(reg.kmInicialIda) || 0);
-    aba.appendRow([
-      data.boletimId,
-      reg.data,
-      reg.diaSemana,
-      reg.horaInicialIda,
-      reg.kmInicialIda,
-      reg.horaFinalIda,
-      reg.numPessoasIda,
-      reg.horaInicialVolta,
-      reg.kmFinalVolta,
-      reg.horaFinalVolta,
-      reg.numPessoasVolta,
-      reg.objCusto,
-      kmRodados,
-      reg.assinatura || ''
-    ]);
-    count++;
-  }
-
-  return { success: true, message: count + ' registros salvos com sucesso!' };
-}
-
 function editarRegistro(data) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const aba = ss.getSheetByName(ABA_REGISTROS);
   const rowIndex = data.rowIndex;
+  if (!rowIndex || rowIndex < 2) return { success: false, error: 'Índice inválido' };
 
-  if (!rowIndex || rowIndex < 2) {
-    return { success: false, error: 'Índice de linha inválido' };
-  }
-
-  const kmRodados = (parseFloat(data.kmFinalVolta) || 0) - (parseFloat(data.kmInicialIda) || 0);
+  const kmIni = parseFloat(data.kmInicialIda) || 0;
+  const kmFin = parseFloat(data.kmFinalVolta) || 0;
+  const kmRodados = kmFin > 0 && kmIni > 0 ? kmFin - kmIni : 0;
 
   aba.getRange(rowIndex, 2, 1, 13).setValues([[
     data.data,
@@ -432,74 +406,7 @@ function excluirRegistro(data) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const aba = ss.getSheetByName(ABA_REGISTROS);
   const rowIndex = data.rowIndex;
-
-  if (!rowIndex || rowIndex < 2) {
-    return { success: false, error: 'Índice de linha inválido' };
-  }
-
+  if (!rowIndex || rowIndex < 2) return { success: false, error: 'Índice inválido' };
   aba.deleteRow(rowIndex);
   return { success: true, message: 'Registro excluído com sucesso!' };
-}
-
-// =====================================================
-// FUNÇÕES DE CADASTRO (POST)
-// =====================================================
-function adicionarTransportador(data) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const aba = ss.getSheetByName(ABA_TRANSPORTADORES);
-  const id = Utilities.getUuid();
-  aba.appendRow([id, data.nome]);
-  return { success: true, id: id, message: 'Transportador adicionado!' };
-}
-
-function adicionarMotorista(data) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const aba = ss.getSheetByName(ABA_MOTORISTAS);
-  const id = Utilities.getUuid();
-  aba.appendRow([id, data.nome, data.transportador]);
-  return { success: true, id: id, message: 'Motorista adicionado!' };
-}
-
-function adicionarVeiculo(data) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const aba = ss.getSheetByName(ABA_VEICULOS);
-  const id = Utilities.getUuid();
-  aba.appendRow([id, data.placa, data.codVeiculo, data.transportador]);
-  return { success: true, id: id, message: 'Veículo adicionado!' };
-}
-
-function adicionarRota(data) {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const aba = ss.getSheetByName(ABA_ROTAS);
-  const id = Utilities.getUuid();
-  aba.appendRow([id, data.nome]);
-  return { success: true, id: id, message: 'Rota adicionada!' };
-}
-
-// =====================================================
-// BUSCAR VEÍCULO POR CÓDIGO NA PÁGINA1
-// Página1: A=Fornecedor, B=Cod, C=cod.fornecedor, D=placa, E=Rota
-// =====================================================
-function buscarVeiculoPorCodigo(codigo) {
-  if (!codigo) return { success: false, error: 'Código não informado' };
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const aba = ss.getSheetByName(ABA_PAGINA1);
-  if (!aba) return { success: false, error: 'Aba Página1 não encontrada' };
-  const dados = aba.getDataRange().getValues();
-  const codigoBusca = String(codigo).trim();
-  for (let i = 1; i < dados.length; i++) {
-    if (String(dados[i][1]).trim() == codigoBusca) {
-      return {
-        success: true,
-        data: {
-          transportador: dados[i][0],
-          codVeiculo: dados[i][1],
-          codFornecedor: dados[i][2],
-          placa: dados[i][3],
-          rota: dados[i][4]
-        }
-      };
-    }
-  }
-  return { success: false, error: 'Veículo com código ' + codigo + ' não encontrado' };
 }
