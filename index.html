@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Boletim Diário - Transportes de Trabalhadores</title>
+    <title>Boletim Diário - Transportes</title>
     <meta name="description" content="Sistema de Boletim Diário para controle de Transportes de Trabalhadores">
     <link rel="icon" type="image/svg+xml"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚌</text></svg>">
@@ -12,6 +12,8 @@
         rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <!-- Script para QR Code -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 </head>
 
 <body>
@@ -65,21 +67,32 @@
                 </div>
             </div>
             <nav class="sidebar-nav">
-                <a href="#" class="nav-item active" data-page="meus-veiculos">
-                    <span class="material-icons-round">local_shipping</span>
-                    <span>Meus Veículos</span>
+                <!-- Seção Motorista -->
+                <div class="nav-section-label motorista-only">MENU MOTORISTA</div>
+                <a href="#" class="nav-item motorista-only active" data-page="motorista-inicio">
+                    <span class="material-icons-round">home</span>
+                    <span>Início</span>
                 </a>
-                <a href="#" class="nav-item" data-page="meus-boletins">
-                    <span class="material-icons-round">description</span>
+                <a href="#" class="nav-item motorista-only" data-page="motorista-boletins">
+                    <span class="material-icons-round">history</span>
                     <span>Meus Boletins</span>
                 </a>
-                <!-- Admin only -->
-                <div class="nav-divider admin-only" style="display:none;"></div>
-                <a href="#" class="nav-item admin-only" data-page="admin-boletins" style="display:none;">
+
+                <!-- Seção Admin -->
+                <div class="nav-section-label admin-only">ADMINISTRAÇÃO</div>
+                <a href="#" class="nav-item admin-only" data-page="admin-dashboard">
+                    <span class="material-icons-round">dashboard</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-item admin-only" data-page="admin-boletins">
                     <span class="material-icons-round">folder_shared</span>
                     <span>Todos Boletins</span>
                 </a>
-                <a href="#" class="nav-item admin-only" data-page="admin-usuarios" style="display:none;">
+                <a href="#" class="nav-item admin-only" data-page="admin-veiculos">
+                    <span class="material-icons-round">settings</span>
+                    <span>Config. Veículos</span>
+                </a>
+                <a href="#" class="nav-item admin-only" data-page="admin-usuarios">
                     <span class="material-icons-round">people</span>
                     <span>Usuários</span>
                 </a>
@@ -99,7 +112,7 @@
                 <button class="menu-toggle" id="menuToggle">
                     <span class="material-icons-round">menu</span>
                 </button>
-                <h1 class="topbar-title" id="pageTitle">Meus Veículos</h1>
+                <h1 class="topbar-title" id="pageTitle">Início</h1>
                 <div class="topbar-actions">
                     <div class="connection-status" id="connectionStatus">
                         <span class="status-dot"></span>
@@ -110,18 +123,18 @@
 
             <div class="page-container">
 
-                <!-- ====== MEUS VEÍCULOS (Motorista) ====== -->
-                <section class="page active" id="page-meus-veiculos">
+                <!-- ====== MOTORISTA: INÍCIO (BUSCAR CÓDIGO) ====== -->
+                <section class="page active" id="page-motorista-inicio">
                     <div class="card">
                         <div class="card-header">
-                            <h2><span class="material-icons-round">local_shipping</span> Selecione o Veículo</h2>
+                            <h2><span class="material-icons-round">local_shipping</span> Novo Boletim</h2>
                         </div>
                         <div class="card-body">
+                            <p class="section-desc">Digite o código do veículo para iniciar o boletim do dia.</p>
                             <div class="search-code-bar">
                                 <div class="form-group">
-                                    <label for="inputCodVeiculo">Código do Veículo</label>
                                     <div class="input-with-btn">
-                                        <input type="text" id="inputCodVeiculo" placeholder="Ex: 5214"
+                                        <input type="text" id="inputCodVeiculo" placeholder="Cód. Veículo (ex: 5023)"
                                             autocomplete="off">
                                         <button type="button" class="btn btn-primary" onclick="buscarPorCodigo()">
                                             <span class="material-icons-round">search</span> Buscar
@@ -131,7 +144,6 @@
                             </div>
                             <div id="veiculoFeedback" class="veiculo-feedback"></div>
 
-                            <!-- Dados do veículo encontrado -->
                             <div id="veiculoEncontrado" class="veiculo-card" style="display:none;">
                                 <div class="veiculo-card-grid">
                                     <div class="info-item"><span class="label">Transportador</span><span class="value"
@@ -143,16 +155,18 @@
                                     <div class="info-item"><span class="label">Rota</span><span class="value"
                                             id="vRota"></span></div>
                                 </div>
+                                <div class="badge-signature" id="vRequerAssinatura" style="display:none;">
+                                    <span class="material-icons-round">qr_code_scanner</span> Requer Assinatura QR Code
+                                </div>
                                 <div class="form-grid" style="margin-top:16px;">
                                     <div class="form-group">
                                         <label for="vMesRef">Mês de Referência</label>
                                         <input type="month" id="vMesRef" required>
                                     </div>
                                 </div>
-                                <div style="margin-top:16px;">
-                                    <button class="btn btn-primary btn-lg" onclick="criarBoletimVeiculo()">
-                                        <span class="material-icons-round">add_circle</span> Criar Boletim para este
-                                        Veículo
+                                <div style="margin-top:20px;">
+                                    <button class="btn btn-primary btn-lg btn-full" onclick="criarBoletimVeiculo()">
+                                        <span class="material-icons-round">play_arrow</span> Iniciar Boletim
                                     </button>
                                 </div>
                             </div>
@@ -160,28 +174,26 @@
                     </div>
                 </section>
 
-                <!-- ====== MEUS BOLETINS ====== -->
-                <section class="page" id="page-meus-boletins">
+                <!-- ====== MOTORISTA: MEUS BOLETINS ====== -->
+                <section class="page" id="page-motorista-boletins">
                     <div class="card">
                         <div class="card-header">
-                            <h2><span class="material-icons-round">description</span> Meus Boletins</h2>
+                            <h2><span class="material-icons-round">history</span> Meus Boletins Recentes</h2>
                         </div>
                         <div class="card-body">
                             <div class="table-wrapper">
                                 <table class="data-table">
                                     <thead>
                                         <tr>
-                                            <th>Transportador</th>
-                                            <th>Placa</th>
-                                            <th>Cód.</th>
+                                            <th>Veículo</th>
                                             <th>Rota</th>
                                             <th>Mês</th>
                                             <th>Ações</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="meusBoletins">
+                                    <tbody id="listaBoletinsMotorista">
                                         <tr>
-                                            <td colspan="6" class="empty-state">Carregando...</td>
+                                            <td colspan="4" class="empty-state">Carregando...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -190,48 +202,36 @@
                     </div>
                 </section>
 
-                <!-- ====== DETALHES BOLETIM ====== -->
-                <section class="page" id="page-detalhes-boletim">
-                    <div class="card boletim-header-card">
-                        <div class="boletim-info-grid" id="boletimInfoGrid"></div>
+                <!-- ====== ADMIN: DASHBOARD ====== -->
+                <section class="page" id="page-admin-dashboard">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon blue"><span class="material-icons-round">description</span></div>
+                            <div class="stat-info"><span class="stat-value" id="statBoletins">0</span><span
+                                    class="stat-label">Boletins</span></div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon green"><span class="material-icons-round">people</span></div>
+                            <div class="stat-info"><span class="stat-value" id="statUsuarios">0</span><span
+                                    class="stat-label">Motoristas</span></div>
+                        </div>
                     </div>
-                    <div class="card">
+                    <div class="card mt-24">
                         <div class="card-header">
-                            <h2><span class="material-icons-round">edit_calendar</span> Registros Diários</h2>
-                            <button class="btn btn-primary" onclick="abrirModalRegistro()">
-                                <span class="material-icons-round">add</span> Adicionar Dia
-                            </button>
+                            <h2>Boletins Recentes</h2>
                         </div>
                         <div class="card-body">
                             <div class="table-wrapper">
-                                <table class="data-table boletim-table">
+                                <table class="data-table">
                                     <thead>
                                         <tr>
-                                            <th rowspan="2">Data</th>
-                                            <th rowspan="2">Dia</th>
-                                            <th colspan="4" class="th-group ida">CIDADE → USINA</th>
-                                            <th colspan="4" class="th-group volta">USINA → CIDADE</th>
-                                            <th rowspan="2">Obj. Custo</th>
-                                            <th rowspan="2">KM Rod.</th>
-                                            <th rowspan="2">Ações</th>
-                                        </tr>
-                                        <tr>
-                                            <th class="sub ida">H. Ini</th>
-                                            <th class="sub ida">KM Ini</th>
-                                            <th class="sub ida">H. Fin</th>
-                                            <th class="sub ida">Pessoas</th>
-                                            <th class="sub volta">H. Ini</th>
-                                            <th class="sub volta">KM Fin</th>
-                                            <th class="sub volta">H. Fin</th>
-                                            <th class="sub volta">Pessoas</th>
+                                            <th>Motorista</th>
+                                            <th>Placa</th>
+                                            <th>Mês</th>
+                                            <th>Ação</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="registrosDiarios">
-                                        <tr>
-                                            <td colspan="13" class="empty-state">Carregando...</td>
-                                        </tr>
-                                    </tbody>
-                                    <tfoot id="registrosTfoot"></tfoot>
+                                    <tbody id="adminDashboardBoletins"></tbody>
                                 </table>
                             </div>
                         </div>
@@ -252,15 +252,52 @@
                                             <th>Motorista</th>
                                             <th>Transportador</th>
                                             <th>Placa</th>
-                                            <th>Cód.</th>
                                             <th>Rota</th>
                                             <th>Mês</th>
                                             <th>Ações</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="adminBoletins">
+                                    <tbody id="adminTodosBoletins">
                                         <tr>
-                                            <td colspan="7" class="empty-state">Carregando...</td>
+                                            <td colspan="6" class="empty-state">Carregando...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ====== ADMIN: CONFIG VEÍCULOS (ASSINATURAS) ====== -->
+                <section class="page" id="page-admin-veiculos">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><span class="material-icons-round">settings</span> Configuração de Veículos</h2>
+                        </div>
+                        <div class="card-body">
+                            <p class="section-desc">Defina quais veículos exigem assinatura via QR Code.</p>
+                            <form class="inline-form" id="formVeiculoConfig">
+                                <input type="text" placeholder="Cód. Veículo" id="confCodVeiculo" required>
+                                <label class="checkbox-container">
+                                    <input type="checkbox" id="confRequerAssinatura">
+                                    <span class="checkmark"></span>
+                                    Requer Assinatura?
+                                </label>
+                                <button type="submit" class="btn btn-primary">
+                                    <span class="material-icons-round">save</span> Salvar
+                                </button>
+                            </form>
+                            <div class="table-wrapper">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Cód. Veículo</th>
+                                            <th>Assinatura Obrigatória</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="listaVeiculosConfig">
+                                        <tr>
+                                            <td colspan="2" class="empty-state">Carregando...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -273,16 +310,16 @@
                 <section class="page" id="page-admin-usuarios">
                     <div class="card">
                         <div class="card-header">
-                            <h2><span class="material-icons-round">people</span> Usuários</h2>
+                            <h2><span class="material-icons-round">people</span> Gestão de Usuários</h2>
                         </div>
                         <div class="card-body">
                             <form class="inline-form" id="formUsuario">
-                                <input type="text" placeholder="Usuário (login)" id="novoUsuario" required>
+                                <input type="text" placeholder="Login" id="novoUsuario" required>
                                 <input type="password" placeholder="Senha" id="novaSenha" required>
                                 <input type="text" placeholder="Nome Completo" id="novoNome" required>
                                 <select id="novoPerfil">
                                     <option value="motorista">Motorista</option>
-                                    <option value="admin">Admin</option>
+                                    <option value="admin">Administrador</option>
                                 </select>
                                 <button type="submit" class="btn btn-primary">
                                     <span class="material-icons-round">person_add</span> Cadastrar
@@ -297,11 +334,57 @@
                                             <th>Perfil</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="listaUsuarios">
+                                    <tbody id="listaUsuarios"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ====== DETALHES DO BOLETIM (Comum) ====== -->
+                <section class="page" id="page-detalhes-boletim">
+                    <div class="boletim-header-actions">
+                        <button class="btn btn-secondary" onclick="voltarPagina()">
+                            <span class="material-icons-round">arrow_back</span> Voltar
+                        </button>
+                    </div>
+                    <div class="card boletim-header-card mt-12">
+                        <div class="boletim-info-grid" id="boletimInfoGrid"></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h2><span class="material-icons-round">edit_calendar</span> Registros Diários</h2>
+                            <button class="btn btn-primary" onclick="abrirModalRegistro()">
+                                <span class="material-icons-round">add</span> Adicionar Dia
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-wrapper">
+                                <table class="data-table boletim-table">
+                                    <thead>
                                         <tr>
-                                            <td colspan="3" class="empty-state">Carregando...</td>
+                                            <th rowspan="2">Data</th>
+                                            <th rowspan="2">Dia</th>
+                                            <th colspan="4" class="th-group ida">IDA (CIDADE → USINA)</th>
+                                            <th colspan="4" class="th-group volta">VOLTA (USINA → CIDADE)</th>
+                                            <th rowspan="2">Obj. C</th>
+                                            <th rowspan="2">KM</th>
+                                            <th rowspan="2">Assin.</th>
+                                            <th rowspan="2">Ações</th>
                                         </tr>
-                                    </tbody>
+                                        <tr>
+                                            <th class="sub ida">H. I</th>
+                                            <th class="sub ida">KM I</th>
+                                            <th class="sub ida">H. F</th>
+                                            <th class="sub ida">P</th>
+                                            <th class="sub volta">H. I</th>
+                                            <th class="sub volta">KM F</th>
+                                            <th class="sub volta">H. F</th>
+                                            <th class="sub volta">P</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="registrosDiarios"></tbody>
+                                    <tfoot id="registrosTfoot"></tfoot>
                                 </table>
                             </div>
                         </div>
@@ -313,10 +396,10 @@
     </div>
 
     <!-- Modal Registro Diário -->
-    <div class="modal-overlay" id="modalRegistro">
+    <div class="modal-overlay" id="modalRegistro" style="display:none;">
         <div class="modal">
             <div class="modal-header">
-                <h3 id="modalRegistroTitle">Adicionar Registro Diário</h3>
+                <h3 id="modalRegistroTitle">Registro Diário</h3>
                 <button class="modal-close" onclick="fecharModalRegistro()">
                     <span class="material-icons-round">close</span>
                 </button>
@@ -334,55 +417,40 @@
                         </div>
                     </div>
 
-                    <div class="section-divider">
-                        <span class="material-icons-round">arrow_forward</span> CIDADE → USINA (Ida)
-                    </div>
-                    <div class="form-grid cols-4">
-                        <div class="form-group">
-                            <label for="regHoraIniIda">Hora Inicial</label>
-                            <input type="time" id="regHoraIniIda">
-                        </div>
-                        <div class="form-group">
-                            <label for="regKmIniIda">KM Inicial</label>
-                            <input type="number" id="regKmIniIda" step="1">
-                        </div>
-                        <div class="form-group">
-                            <label for="regHoraFinIda">Hora Final</label>
-                            <input type="time" id="regHoraFinIda">
-                        </div>
-                        <div class="form-group">
-                            <label for="regPessoasIda">Nº Pessoas</label>
-                            <input type="number" id="regPessoasIda" min="0">
-                        </div>
+                    <div class="section-divider">IDA</div>
+                    <div class="form-grid cols-2">
+                        <div class="form-group"><label>Hora Início</label><input type="time" id="regHoraIniIda"></div>
+                        <div class="form-group"><label>KM Início</label><input type="number" id="regKmIniIda"></div>
+                        <div class="form-group"><label>Hora Fim</label><input type="time" id="regHoraFinIda"></div>
+                        <div class="form-group"><label>Pessoas</label><input type="number" id="regPessoasIda"></div>
                     </div>
 
-                    <div class="section-divider">
-                        <span class="material-icons-round">arrow_back</span> USINA → CIDADE (Volta)
+                    <div class="section-divider">VOLTA</div>
+                    <div class="form-grid cols-2">
+                        <div class="form-group"><label>Hora Início</label><input type="time" id="regHoraIniVolta"></div>
+                        <div class="form-group"><label>KM Fim</label><input type="number" id="regKmFinVolta"></div>
+                        <div class="form-group"><label>Hora Fim</label><input type="time" id="regHoraFinVolta"></div>
+                        <div class="form-group"><label>Pessoas</label><input type="number" id="regPessoasVolta"></div>
                     </div>
-                    <div class="form-grid cols-4">
-                        <div class="form-group">
-                            <label for="regHoraIniVolta">Hora Inicial</label>
-                            <input type="time" id="regHoraIniVolta">
-                        </div>
-                        <div class="form-group">
-                            <label for="regKmFinVolta">KM Final</label>
-                            <input type="number" id="regKmFinVolta" step="1">
-                        </div>
-                        <div class="form-group">
-                            <label for="regHoraFinVolta">Hora Final</label>
-                            <input type="time" id="regHoraFinVolta">
-                        </div>
-                        <div class="form-group">
-                            <label for="regPessoasVolta">Nº Pessoas</label>
-                            <input type="number" id="regPessoasVolta" min="0">
+
+                    <div id="assinaturaSection" class="mt-16" style="display:none;">
+                        <div class="section-divider">ASSINATURA</div>
+                        <div class="qr-signature-box">
+                            <div id="qr-reader" style="width: 100%; display:none;"></div>
+                            <div id="assinaturaStatus" class="assinatura-status pending">
+                                <span class="material-icons-round">pending</span> Pendente
+                            </div>
+                            <button type="button" class="btn btn-secondary btn-full mt-8" id="btnScanQR"
+                                onclick="iniciarLeituraQR()">
+                                <span class="material-icons-round">qr_code_scanner</span> Ler QR Code
+                            </button>
+                            <input type="hidden" id="regAssinatura">
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="fecharModalRegistro()">Cancelar</button>
-                    <button type="submit" class="btn btn-primary">
-                        <span class="material-icons-round">save</span> Salvar
-                    </button>
+                    <button type="submit" class="btn btn-primary">Salvar</button>
                 </div>
             </form>
         </div>

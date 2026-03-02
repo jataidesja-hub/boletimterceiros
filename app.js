@@ -1,5 +1,5 @@
 // =====================================================
-// BOLETIM DIÁRIO - APP.JS (v2 com Login)
+// BOLETIM DIÁRIO - APP.JS (v3 - Admin + Motorista)
 // =====================================================
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbzyKPCMGtmgf3laqpoplIZi4cB_fXHm89gqV65iRvt3649C6oZof1mUgyQdusZ2CNRI/exec';
@@ -7,31 +7,32 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbzyKPCMGtmgf3laqpoplIZi
 // ===================== STATE =====================
 const state = {
   user: null, // { usuario, nomeCompleto, perfil }
-  currentPage: 'meus-veiculos',
+  currentPage: 'login',
   currentBoletimId: null,
+  currentBoletimData: null,
   boletins: [],
   registros: [],
-  veiculoSelecionado: null,
-  editingRowIndex: null
+  veiculoEncontrado: null,
+  editingRowIndex: null,
+  qrScanner: null
 };
 
 // ===================== INIT =====================
 document.addEventListener('DOMContentLoaded', () => {
-  // Verificar sessão salva
-  const savedUser = localStorage.getItem('boletim_user');
+  const savedUser = localStorage.getItem('boletim_user_v3');
   if (savedUser) {
     try {
       state.user = JSON.parse(savedUser);
       showApp();
-    } catch (e) {
-      localStorage.removeItem('boletim_user');
-    }
+    } catch (e) { localStorage.removeItem('boletim_user_v3'); }
   }
 
-  // Login form
+  // Event Listeners
   document.getElementById('formLogin').addEventListener('submit', handleLogin);
+  document.getElementById('formRegistro').addEventListener('submit', submitRegistro);
+  document.getElementById('formUsuario').addEventListener('submit', submitUsuario);
+  document.getElementById('formVeiculoConfig').addEventListener('submit', submitVeiculoConfig);
 
-  // Sidebar nav
   document.querySelectorAll('.nav-item').forEach(item => {
     item.addEventListener('click', (e) => {
       e.preventDefault();
@@ -39,7 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Sidebar mobile
+  // Mobile Menu
   document.getElementById('menuToggle').addEventListener('click', () => {
     document.getElementById('sidebar').classList.add('open');
     document.getElementById('sidebarOverlay').classList.add('active');
@@ -47,16 +48,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('sidebarClose').addEventListener('click', closeSidebar);
   document.getElementById('sidebarOverlay').addEventListener('click', closeSidebar);
 
-  // Buscar código com Enter
+  // Input Enter Search
   document.getElementById('inputCodVeiculo').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); buscarPorCodigo(); }
   });
-
-  // Registro diário
-  document.getElementById('formRegistro').addEventListener('submit', submitRegistro);
-
-  // Cadastrar usuário
-  document.getElementById('formUsuario').addEventListener('submit', submitUsuario);
 });
 
 function closeSidebar() {
@@ -64,7 +59,7 @@ function closeSidebar() {
   document.getElementById('sidebarOverlay').classList.remove('active');
 }
 
-// ===================== LOGIN =====================
+// ===================== LOGIN / LOGOUT =====================
 async function handleLogin(e) {
   e.preventDefault();
   const usuario = document.getElementById('loginUsuario').value.trim();
@@ -77,43 +72,36 @@ async function handleLogin(e) {
     const res = await apiGet('login', { usuario, senha });
     if (res.success) {
       state.user = res.data;
-      localStorage.setItem('boletim_user', JSON.stringify(res.data));
+      localStorage.setItem('boletim_user_v3', JSON.stringify(res.data));
       showApp();
       showToast('Bem-vindo, ' + res.data.nomeCompleto + '!', 'success');
     } else {
-      errorDiv.textContent = res.error || 'Erro ao fazer login';
+      errorDiv.textContent = res.error || 'Erro ao logar';
     }
-  } catch (err) {
-    errorDiv.textContent = 'Erro de conexão com o servidor';
-  }
+  } catch (err) { errorDiv.textContent = 'Erro de conexão'; }
   hideLoading();
 }
 
 function logout() {
   state.user = null;
-  localStorage.removeItem('boletim_user');
+  localStorage.removeItem('boletim_user_v3');
   document.getElementById('appContainer').style.display = 'none';
   document.getElementById('loginContainer').style.display = 'flex';
   document.getElementById('formLogin').reset();
-  document.getElementById('loginError').textContent = '';
 }
 
 function showApp() {
   document.getElementById('loginContainer').style.display = 'none';
   document.getElementById('appContainer').style.display = 'flex';
-
-  // User info
   document.getElementById('userName').textContent = state.user.nomeCompleto;
   document.getElementById('userRole').textContent = state.user.perfil === 'admin' ? 'Administrador' : 'Motorista';
 
-  // Show/hide admin sections
   const isAdmin = state.user.perfil === 'admin';
-  document.querySelectorAll('.admin-only').forEach(el => {
-    el.style.display = isAdmin ? '' : 'none';
-  });
+  document.querySelectorAll('.admin-only').forEach(el => el.style.display = isAdmin ? 'flex' : 'none');
+  document.querySelectorAll('.motorista-only').forEach(el => el.style.display = !isAdmin ? 'flex' : 'none');
 
-  // Carregar página inicial
-  navigateTo('meus-veiculos');
+  const startPage = isAdmin ? 'admin-dashboard' : 'motorista-inicio';
+  navigateTo(startPage);
 }
 
 // ===================== NAVIGATION =====================
@@ -127,36 +115,32 @@ function navigateTo(page) {
   if (targetPage) targetPage.classList.add('active');
 
   const titles = {
-    'meus-veiculos': 'Meus Veículos',
-    'meus-boletins': 'Meus Boletins',
-    'detalhes-boletim': 'Detalhes do Boletim',
+    'motorista-inicio': 'Novo Boletim',
+    'motorista-boletins': 'Meus Boletins',
+    'admin-dashboard': 'Dashboard Admin',
     'admin-boletins': 'Todos os Boletins',
-    'admin-usuarios': 'Gerenciar Usuários'
+    'admin-veiculos': 'Configuração de Veículos',
+    'admin-usuarios': 'Usuários do Sistema',
+    'detalhes-boletim': 'Detalhes do Boletim'
   };
   document.getElementById('pageTitle').textContent = titles[page] || 'Boletim';
   closeSidebar();
   state.currentPage = page;
 
-  switch (page) {
-    case 'meus-veiculos':
-      initVeiculoPage();
-      break;
-    case 'meus-boletins':
-      loadMeusBoletins();
-      break;
-    case 'detalhes-boletim':
-      loadBoletimDetalhes(state.currentBoletimId);
-      break;
-    case 'admin-boletins':
-      loadAdminBoletins();
-      break;
-    case 'admin-usuarios':
-      loadUsuarios();
-      break;
-  }
+  if (page === 'motorista-inicio') initMotoristaInicio();
+  if (page === 'motorista-boletins') loadMotoristaBoletins();
+  if (page === 'admin-dashboard') loadAdminDashboard();
+  if (page === 'admin-boletins') loadAdminTodosBoletins();
+  if (page === 'admin-veiculos') loadVeiculosConfig();
+  if (page === 'admin-usuarios') loadUsuarios();
 }
 
-// ===================== API =====================
+function voltarPagina() {
+  const prev = state.user.perfil === 'admin' ? 'admin-boletins' : 'motorista-boletins';
+  navigateTo(prev);
+}
+
+// ===================== API WRAPPERS =====================
 async function apiGet(action, params = {}) {
   const url = new URL(API_URL);
   url.searchParams.set('action', action);
@@ -164,13 +148,9 @@ async function apiGet(action, params = {}) {
   try {
     const res = await fetch(url.toString());
     const data = await res.json();
-    updateConnectionStatus(true);
+    setConnection(true);
     return data;
-  } catch (err) {
-    updateConnectionStatus(false);
-    showToast('Erro de conexão: ' + err.message, 'error');
-    throw err;
-  }
+  } catch (err) { setConnection(false); throw err; }
 }
 
 async function apiPost(body) {
@@ -181,388 +161,263 @@ async function apiPost(body) {
       body: JSON.stringify(body)
     });
     const data = await res.json();
-    updateConnectionStatus(true);
+    setConnection(true);
     return data;
-  } catch (err) {
-    updateConnectionStatus(false);
-    showToast('Erro de conexão: ' + err.message, 'error');
-    throw err;
-  }
+  } catch (err) { setConnection(false); throw err; }
 }
 
-function updateConnectionStatus(connected) {
+function setConnection(ok) {
   const dot = document.querySelector('.status-dot');
   const text = document.querySelector('.status-text');
-  if (connected) { dot.className = 'status-dot connected'; text.textContent = 'Conectado'; }
-  else { dot.className = 'status-dot error'; text.textContent = 'Sem conexão'; }
+  dot.classList.toggle('connected', ok);
+  dot.classList.toggle('error', !ok);
+  text.textContent = ok ? 'Conectado' : 'Erro API';
 }
 
-// ===================== HELPERS =====================
-function showLoading() { document.getElementById('loadingOverlay').classList.add('active'); }
-function hideLoading() { document.getElementById('loadingOverlay').classList.remove('active'); }
-
-function showToast(message, type = 'info') {
-  const container = document.getElementById('toastContainer');
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-  const icons = { success: 'check_circle', error: 'error', info: 'info' };
-  toast.innerHTML = `<span class="material-icons-round">${icons[type] || 'info'}</span> ${message}`;
-  container.appendChild(toast);
-  setTimeout(() => {
-    toast.style.opacity = '0';
-    toast.style.transform = 'translateX(20px)';
-    toast.style.transition = '0.3s ease';
-    setTimeout(() => toast.remove(), 300);
-  }, 3500);
-}
-
-function getDiaSemana(dateStr) {
-  const dias = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
-  const d = new Date(dateStr + 'T12:00:00');
-  return dias[d.getDay()];
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return '';
-  // Se já está formatado dd/mm/yyyy
-  if (dateStr.includes('/')) return dateStr;
-  // Se está ISO yyyy-mm-dd
-  const parts = dateStr.split('-');
-  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  return dateStr;
-}
-
-// ===================== VEÍCULOS (MOTORISTA) =====================
-function initVeiculoPage() {
+// ===================== MOTORISTA LOGIC =====================
+function initMotoristaInicio() {
   document.getElementById('veiculoEncontrado').style.display = 'none';
   document.getElementById('veiculoFeedback').textContent = '';
   document.getElementById('inputCodVeiculo').value = '';
-  state.veiculoSelecionado = null;
-
-  // Set default month
   const now = new Date();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  document.getElementById('vMesRef').value = `${now.getFullYear()}-${month}`;
+  document.getElementById('vMesRef').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
 async function buscarPorCodigo() {
-  const codigo = document.getElementById('inputCodVeiculo').value.trim();
-  const feedback = document.getElementById('veiculoFeedback');
-
-  if (!codigo) {
-    feedback.textContent = 'Digite um código para buscar.';
-    feedback.className = 'veiculo-feedback error';
-    return;
-  }
-
-  feedback.textContent = 'Buscando...';
-  feedback.className = 'veiculo-feedback';
+  const cod = document.getElementById('inputCodVeiculo').value.trim();
+  if (!cod) return;
   showLoading();
-
   try {
-    const res = await apiGet('buscarVeiculoPorCodigo', { codigo });
+    const res = await apiGet('buscarVeiculoPorCodigo', { codigo: cod });
     if (res.success) {
-      const v = res.data;
-      state.veiculoSelecionado = v;
-
-      document.getElementById('vTransportador').textContent = v.transportador || '';
-      document.getElementById('vPlaca').textContent = v.placa || '';
-      document.getElementById('vCodVeiculo').textContent = v.codVeiculo || '';
-      document.getElementById('vRota').textContent = v.rota || '';
-
+      state.veiculoEncontrado = res.data;
+      document.getElementById('vTransportador').textContent = res.data.transportador;
+      document.getElementById('vPlaca').textContent = res.data.placa;
+      document.getElementById('vCodVeiculo').textContent = res.data.codVeiculo;
+      document.getElementById('vRota').textContent = res.data.rota;
+      document.getElementById('vRequerAssinatura').style.display = res.data.requerAssinatura ? 'inline-flex' : 'none';
       document.getElementById('veiculoEncontrado').style.display = 'block';
-
-      feedback.textContent = '✓ Veículo encontrado!';
-      feedback.className = 'veiculo-feedback success';
+      document.getElementById('veiculoFeedback').textContent = '';
     } else {
-      state.veiculoSelecionado = null;
       document.getElementById('veiculoEncontrado').style.display = 'none';
-      feedback.textContent = '✗ ' + res.error;
-      feedback.className = 'veiculo-feedback error';
+      document.getElementById('veiculoFeedback').textContent = 'Veículo não encontrado.';
     }
-  } catch (err) {
-    feedback.textContent = '✗ Erro de conexão';
-    feedback.className = 'veiculo-feedback error';
-  }
+  } catch (e) { showToast('Erro ao buscar veículo', 'error'); }
   hideLoading();
 }
 
 async function criarBoletimVeiculo() {
-  const v = state.veiculoSelecionado;
-  if (!v) {
-    showToast('Busque um veículo primeiro!', 'error');
-    return;
-  }
-
-  const mesRef = document.getElementById('vMesRef').value;
-  if (!mesRef) {
-    showToast('Selecione o mês de referência!', 'error');
-    return;
-  }
-
-  const data = {
-    action: 'criarBoletim',
-    transportador: v.transportador,
-    motorista: state.user.nomeCompleto,
-    placa: v.placa,
-    codVeiculo: v.codVeiculo,
-    rota: v.rota,
-    mesReferencia: mesRef,
-    usuario: state.user.usuario
-  };
-
+  const v = state.veiculoEncontrado;
+  const mes = document.getElementById('vMesRef').value;
   showLoading();
   try {
-    const res = await apiPost(data);
+    const res = await apiPost({
+      action: 'criarBoletim',
+      transportador: v.transportador,
+      motorista: state.user.nomeCompleto,
+      placa: v.placa,
+      codVeiculo: v.codVeiculo,
+      rota: v.rota,
+      mesReferencia: mes,
+      usuario: state.user.usuario
+    });
     if (res.success) {
-      showToast(res.message, 'success');
       state.currentBoletimId = res.id;
       navigateTo('detalhes-boletim');
-    } else {
-      showToast(res.error, 'error');
     }
-  } catch (err) { /* handled */ }
+  } catch (e) { showToast('Erro ao criar boletim', 'error'); }
   hideLoading();
 }
 
-// ===================== MEUS BOLETINS =====================
-async function loadMeusBoletins() {
+async function loadMotoristaBoletins() {
   showLoading();
   try {
     const res = await apiGet('getBoletins', { usuario: state.user.usuario });
-    if (res.success) state.boletins = res.data;
-  } catch (err) { /* handled */ }
+    const tbody = document.getElementById('listaBoletinsMotorista');
+    if (res.success && res.data.length > 0) {
+      tbody.innerHTML = res.data.map(b => `
+        <tr>
+          <td>${b.placa} (${b.codVeiculo})</td>
+          <td>${b.rota}</td>
+          <td>${b.mesReferencia}</td>
+          <td>
+            <button class="btn btn-sm btn-secondary" onclick="abrirBoletimDetalhes('${b.id}')">Ver</button>
+            <button class="btn btn-sm btn-secondary" style="color:red" onclick="excluirBoletim('${b.id}')">X</button>
+          </td>
+        </tr>
+      `).join('');
+    } else {
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Nenhum boletim encontrado.</td></tr>';
+    }
+  } catch (e) { }
   hideLoading();
-
-  const tbody = document.getElementById('meusBoletins');
-  if (state.boletins.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Nenhum boletim cadastrado. Vá em "Meus Veículos" para criar um novo.</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = state.boletins.map(b => `
-    <tr>
-      <td>${b.transportador}</td>
-      <td>${b.placa}</td>
-      <td>${b.codVeiculo}</td>
-      <td>${b.rota}</td>
-      <td>${b.mesReferencia}</td>
-      <td>
-        <div class="action-btns">
-          <button class="btn-icon" title="Ver detalhes" onclick="abrirBoletim('${b.id}')">
-            <span class="material-icons-round">visibility</span>
-          </button>
-          <button class="btn-icon danger" title="Excluir" onclick="confirmarExcluirBoletim('${b.id}')">
-            <span class="material-icons-round">delete</span>
-          </button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
 }
 
-function abrirBoletim(id) {
+// ===================== ADMIN LOGIC =====================
+async function loadAdminDashboard() {
+  showLoading();
+  try {
+    const [bol, u] = await Promise.all([apiGet('getBoletins'), apiGet('getUsuarios')]);
+    document.getElementById('statBoletins').textContent = bol.data.length;
+    document.getElementById('statUsuarios').textContent = u.data.length;
+
+    document.getElementById('adminDashboardBoletins').innerHTML = bol.data.slice(0, 5).map(b => `
+      <tr><td>${b.motorista}</td><td>${b.placa}</td><td>${b.mesReferencia}</td><td><button class="btn btn-sm btn-secondary" onclick="abrirBoletimDetalhes('${b.id}')">Ver</button></td></tr>
+    `).join('');
+  } catch (e) { }
+  hideLoading();
+}
+
+async function loadAdminTodosBoletins() {
+  showLoading();
+  try {
+    const res = await apiGet('getBoletins');
+    const tbody = document.getElementById('adminTodosBoletins');
+    tbody.innerHTML = res.data.map(b => `
+      <tr>
+        <td>${b.motorista}</td>
+        <td>${b.transportador}</td>
+        <td>${b.placa}</td>
+        <td>${b.rota}</td>
+        <td>${b.mesReferencia}</td>
+        <td><button class="btn btn-sm btn-secondary" onclick="abrirBoletimDetalhes('${b.id}')">Gerenciar</button></td>
+      </tr>
+    `).join('');
+  } catch (e) { }
+  hideLoading();
+}
+
+async function loadVeiculosConfig() {
+  showLoading();
+  try {
+    const res = await apiGet('getVeiculosConfig');
+    document.getElementById('listaVeiculosConfig').innerHTML = res.data.map(v => `
+      <tr><td>${v.codVeiculo}</td><td>${v.requerAssinatura ? 'Sim' : 'Não'}</td></tr>
+    `).join('');
+  } catch (e) { }
+  hideLoading();
+}
+
+async function submitVeiculoConfig(e) {
+  e.preventDefault();
+  const cod = document.getElementById('confCodVeiculo').value;
+  const ass = document.getElementById('confRequerAssinatura').checked;
+  showLoading();
+  const res = await apiPost({ action: 'salvarVeiculoConfig', codVeiculo: cod, requerAssinatura: ass });
+  if (res.success) { showToast(res.message, 'success'); loadVeiculosConfig(); }
+  hideLoading();
+}
+
+async function loadUsuarios() {
+  showLoading();
+  const res = await apiGet('getUsuarios');
+  document.getElementById('listaUsuarios').innerHTML = res.data.map(u => `
+    <tr><td>${u.usuario}</td><td>${u.nomeCompleto}</td><td style="text-transform:capitalize">${u.perfil}</td></tr>
+  `).join('');
+  hideLoading();
+}
+
+async function submitUsuario(e) {
+  e.preventDefault();
+  const data = {
+    action: 'cadastrarUsuario',
+    usuario: document.getElementById('novoUsuario').value,
+    senha: document.getElementById('novaSenha').value,
+    nomeCompleto: document.getElementById('novoNome').value,
+    perfil: document.getElementById('novoPerfil').value
+  };
+  showLoading();
+  const res = await apiPost(data);
+  if (res.success) { showToast(res.message, 'success'); loadUsuarios(); document.getElementById('formUsuario').reset(); }
+  else { showToast(res.error, 'error'); }
+  hideLoading();
+}
+
+// ===================== DETALHES & REGISTROS =====================
+async function abrirBoletimDetalhes(id) {
   state.currentBoletimId = id;
   navigateTo('detalhes-boletim');
-}
-
-async function confirmarExcluirBoletim(id) {
-  if (!confirm('Tem certeza que deseja excluir este boletim e todos os seus registros?')) return;
   showLoading();
   try {
-    const res = await apiPost({ action: 'excluirBoletim', id });
-    if (res.success) {
-      showToast(res.message, 'success');
-      loadMeusBoletins();
-    } else {
-      showToast(res.error, 'error');
-    }
-  } catch (err) { /* handled */ }
-  hideLoading();
-}
-
-// ===================== ADMIN BOLETINS =====================
-async function loadAdminBoletins() {
-  showLoading();
-  try {
-    const res = await apiGet('getBoletins', { usuario: 'admin' });
-    if (res.success) state.boletins = res.data;
-  } catch (err) { /* handled */ }
-  hideLoading();
-
-  const tbody = document.getElementById('adminBoletins');
-  if (state.boletins.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Nenhum boletim cadastrado</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = state.boletins.map(b => `
-    <tr>
-      <td>${b.motorista}</td>
-      <td>${b.transportador}</td>
-      <td>${b.placa}</td>
-      <td>${b.codVeiculo}</td>
-      <td>${b.rota}</td>
-      <td>${b.mesReferencia}</td>
-      <td>
-        <div class="action-btns">
-          <button class="btn-icon" title="Ver detalhes" onclick="abrirBoletim('${b.id}')">
-            <span class="material-icons-round">visibility</span>
-          </button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
-}
-
-// ===================== DETALHES BOLETIM =====================
-async function loadBoletimDetalhes(boletimId) {
-  if (!boletimId) return;
-  showLoading();
-  try {
-    const [boletimRes, registrosRes] = await Promise.all([
-      apiGet('getBoletim', { id: boletimId }),
-      apiGet('getRegistros', { boletimId })
-    ]);
-
-    if (boletimRes.success) renderBoletimInfo(boletimRes.data);
-    if (registrosRes.success) {
-      state.registros = registrosRes.data;
-      renderRegistros(registrosRes.data);
-    }
-  } catch (err) { /* handled */ }
+    const [bol, reg] = await Promise.all([apiGet('getBoletim', { id }), apiGet('getRegistros', { boletimId: id })]);
+    state.currentBoletimData = bol.data;
+    renderBoletimInfo(bol.data);
+    state.registros = reg.data;
+    renderRegistros(reg.data);
+  } catch (e) { }
   hideLoading();
 }
 
 function renderBoletimInfo(b) {
   document.getElementById('boletimInfoGrid').innerHTML = `
-    <div class="boletim-info-item"><span class="label">Transportador</span><span class="value">${b.transportador}</span></div>
-    <div class="boletim-info-item"><span class="label">Motorista</span><span class="value">${b.motorista}</span></div>
-    <div class="boletim-info-item"><span class="label">Placa</span><span class="value">${b.placa}</span></div>
-    <div class="boletim-info-item"><span class="label">Cód. Veículo</span><span class="value">${b.codVeiculo}</span></div>
-    <div class="boletim-info-item"><span class="label">Rota</span><span class="value">${b.rota}</span></div>
-    <div class="boletim-info-item"><span class="label">Mês Referência</span><span class="value">${b.mesReferencia}</span></div>
+    <div class="info-item"><span class="label">Motorista</span><span class="value">${b.motorista}</span></div>
+    <div class="info-item"><span class="label">Placa</span><span class="value">${b.placa}</span></div>
+    <div class="info-item"><span class="label">Cód</span><span class="value">${b.codVeiculo}</span></div>
+    <div class="info-item"><span class="label">Mês</span><span class="value">${b.mesReferencia}</span></div>
   `;
 }
 
-function renderRegistros(registros) {
+function renderRegistros(regs) {
   const tbody = document.getElementById('registrosDiarios');
-  const tfoot = document.getElementById('registrosTfoot');
-
-  if (registros.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="13" class="empty-state">Nenhum registro. Clique em "Adicionar Dia" para começar.</td></tr>';
-    tfoot.innerHTML = '';
-    return;
-  }
-
-  registros.sort((a, b) => (a.data || '').localeCompare(b.data || ''));
-
-  let totalKm = 0, totalPessoasIda = 0, totalPessoasVolta = 0;
-
-  tbody.innerHTML = registros.map(r => {
-    const km = parseFloat(r.kmRodados) || 0;
-    totalKm += km;
-    totalPessoasIda += parseInt(r.numPessoasIda) || 0;
-    totalPessoasVolta += parseInt(r.numPessoasVolta) || 0;
-
-    return `
+  tbody.innerHTML = regs.map(r => `
     <tr>
-      <td>${formatDate(r.data)}</td>
-      <td>${r.diaSemana || ''}</td>
-      <td>${r.horaInicialIda || ''}</td>
-      <td>${r.kmInicialIda || ''}</td>
-      <td>${r.horaFinalIda || ''}</td>
-      <td>${r.numPessoasIda || ''}</td>
-      <td>${r.horaInicialVolta || ''}</td>
-      <td>${r.kmFinalVolta || ''}</td>
-      <td>${r.horaFinalVolta || ''}</td>
-      <td>${r.numPessoasVolta || ''}</td>
-      <td>${r.objCusto || ''}</td>
-      <td>${km > 0 ? km.toLocaleString('pt-BR') : ''}</td>
+      <td>${r.data}</td>
+      <td>${r.diaSemana}</td>
+      <td class="ida">${r.horaInicialIda}</td><td class="ida">${r.kmInicialIda}</td><td class="ida">${r.horaFinalIda}</td><td class="ida">${r.numPessoasIda}</td>
+      <td class="volta">${r.horaInicialVolta}</td><td class="volta">${r.kmFinalVolta}</td><td class="volta">${r.horaFinalVolta}</td><td class="volta">${r.numPessoasVolta}</td>
+      <td>${r.objCusto}</td><td>${r.kmRodados}</td>
+      <td>${r.assinatura ? '<span class="material-icons-round" style="color:green">done</span>' : (state.currentBoletimData.requerAssinatura ? '❌' : '-')}</td>
       <td>
-        <div class="action-btns">
-          <button class="btn-icon" title="Editar" onclick="editarRegistro(${r.rowIndex})">
-            <span class="material-icons-round">edit</span>
-          </button>
-          <button class="btn-icon danger" title="Excluir" onclick="excluirRegistro(${r.rowIndex})">
-            <span class="material-icons-round">delete</span>
-          </button>
-        </div>
+        <button class="btn btn-sm" onclick="editarReg(${r.rowIndex})">E</button>
+        <button class="btn btn-sm" style="color:red" onclick="excluirReg(${r.rowIndex})">X</button>
       </td>
-    </tr>`;
-  }).join('');
-
-  tfoot.innerHTML = `
-    <tr>
-      <td colspan="5"><strong>Totais</strong></td>
-      <td><strong>${totalPessoasIda}</strong></td>
-      <td colspan="3"></td>
-      <td><strong>${totalPessoasVolta}</strong></td>
-      <td></td>
-      <td><strong>${totalKm.toLocaleString('pt-BR')}</strong></td>
-      <td><strong>${registros.length} dias</strong></td>
     </tr>
-  `;
+  `).join('');
 }
 
-// ===================== MODAL REGISTRO =====================
-function abrirModalRegistro(rowIndex) {
-  state.editingRowIndex = rowIndex || null;
-  const modal = document.getElementById('modalRegistro');
-  const title = document.getElementById('modalRegistroTitle');
+// ===================== MODAL REGISTRO & QR =====================
+function abrirModalRegistro(idx) {
+  state.editingRowIndex = idx || null;
+  document.getElementById('formRegistro').reset();
+  document.getElementById('modalRegistro').style.display = 'flex';
+  document.getElementById('assinaturaSection').style.display = state.currentBoletimData.requerAssinatura ? 'block' : 'none';
+  resetAssinatura();
 
-  if (rowIndex) {
-    title.textContent = 'Editar Registro Diário';
-    const reg = state.registros.find(r => r.rowIndex === rowIndex);
-    if (reg) {
-      // Converter data para yyyy-mm-dd para o input date
-      let dataVal = reg.data || '';
-      if (dataVal.includes('/')) {
-        const p = dataVal.split('/');
-        if (p.length === 3) dataVal = `${p[2]}-${p[1]}-${p[0]}`;
-      }
-      document.getElementById('regData').value = dataVal;
-      document.getElementById('regHoraIniIda').value = reg.horaInicialIda || '';
-      document.getElementById('regKmIniIda').value = reg.kmInicialIda || '';
-      document.getElementById('regHoraFinIda').value = reg.horaFinalIda || '';
-      document.getElementById('regPessoasIda').value = reg.numPessoasIda || '';
-      document.getElementById('regHoraIniVolta').value = reg.horaInicialVolta || '';
-      document.getElementById('regKmFinVolta').value = reg.kmFinalVolta || '';
-      document.getElementById('regHoraFinVolta').value = reg.horaFinalVolta || '';
-      document.getElementById('regPessoasVolta').value = reg.numPessoasVolta || '';
-      document.getElementById('regObjCusto').value = reg.objCusto || '';
-    }
-  } else {
-    title.textContent = 'Adicionar Registro Diário';
-    document.getElementById('formRegistro').reset();
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    document.getElementById('regData').value = `${yyyy}-${mm}-${dd}`;
+  if (idx) {
+    const r = state.registros.find(x => x.rowIndex === idx);
+    // Fill form... (simplified for brevity)
+    document.getElementById('regData').value = r.data.split('/').reverse().join('-');
+    document.getElementById('regObjCusto').value = r.objCusto;
+    document.getElementById('regHoraIniIda').value = r.horaInicialIda;
+    document.getElementById('regKmIniIda').value = r.kmInicialIda;
+    document.getElementById('regHoraFinIda').value = r.horaFinalIda;
+    document.getElementById('regPessoasIda').value = r.numPessoasIda;
+    document.getElementById('regHoraIniVolta').value = r.horaInicialVolta;
+    document.getElementById('regKmFinVolta').value = r.kmFinalVolta;
+    document.getElementById('regHoraFinVolta').value = r.horaFinalVolta;
+    document.getElementById('regPessoasVolta').value = r.numPessoasVolta;
+    document.getElementById('regAssinatura').value = r.assinatura;
+    if (r.assinatura) setAssinaturaOK();
   }
-
-  modal.classList.add('active');
 }
 
 function fecharModalRegistro() {
-  document.getElementById('modalRegistro').classList.remove('active');
-  state.editingRowIndex = null;
+  document.getElementById('modalRegistro').style.display = 'none';
+  if (state.qrScanner) { state.qrScanner.stop(); state.qrScanner = null; }
 }
 
-function editarRegistro(rowIndex) { abrirModalRegistro(rowIndex); }
+function editarReg(idx) { abrirModalRegistro(idx); }
 
 async function submitRegistro(e) {
   e.preventDefault();
-  const dataInput = document.getElementById('regData').value; // yyyy-mm-dd
-  // Converter para dd/mm/yyyy para salvar na planilha
-  const parts = dataInput.split('-');
-  const dataFormatada = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dataInput;
-
-  const registro = {
+  const d = document.getElementById('regData').value;
+  if (state.currentBoletimData.requerAssinatura && !document.getElementById('regAssinatura').value) {
+    alert('Assinatura QR Code obrigatória!'); return;
+  }
+  const reg = {
     boletimId: state.currentBoletimId,
-    data: dataFormatada,
-    diaSemana: getDiaSemana(dataInput),
+    data: d.split('-').reverse().join('/'),
+    diaSemana: getDiaSemana(d),
     horaInicialIda: document.getElementById('regHoraIniIda').value,
     kmInicialIda: document.getElementById('regKmIniIda').value,
     horaFinalIda: document.getElementById('regHoraFinIda').value,
@@ -571,95 +426,62 @@ async function submitRegistro(e) {
     kmFinalVolta: document.getElementById('regKmFinVolta').value,
     horaFinalVolta: document.getElementById('regHoraFinVolta').value,
     numPessoasVolta: document.getElementById('regPessoasVolta').value,
-    objCusto: document.getElementById('regObjCusto').value
+    objCusto: document.getElementById('regObjCusto').value,
+    assinatura: document.getElementById('regAssinatura').value
   };
 
   showLoading();
-  try {
-    let res;
-    if (state.editingRowIndex) {
-      registro.action = 'editarRegistro';
-      registro.rowIndex = state.editingRowIndex;
-      res = await apiPost(registro);
-    } else {
-      registro.action = 'salvarRegistro';
-      res = await apiPost(registro);
-    }
+  let res;
+  if (state.editingRowIndex) { res = await apiPost({ ...reg, action: 'editarRegistro', rowIndex: state.editingRowIndex }); }
+  else { res = await apiPost({ ...reg, action: 'salvarRegistro' }); }
 
-    if (res.success) {
-      showToast(res.message, 'success');
-      fecharModalRegistro();
-      loadBoletimDetalhes(state.currentBoletimId);
-    } else {
-      showToast(res.error, 'error');
-    }
-  } catch (err) { /* handled */ }
+  if (res.success) { showToast(res.message, 'success'); fecharModalRegistro(); abrirBoletimDetalhes(state.currentBoletimId); }
   hideLoading();
 }
 
-async function excluirRegistro(rowIndex) {
-  if (!confirm('Tem certeza que deseja excluir este registro?')) return;
-  showLoading();
-  try {
-    const res = await apiPost({ action: 'excluirRegistro', rowIndex });
-    if (res.success) {
-      showToast(res.message, 'success');
-      loadBoletimDetalhes(state.currentBoletimId);
-    } else {
-      showToast(res.error, 'error');
-    }
-  } catch (err) { /* handled */ }
-  hideLoading();
+function iniciarLeituraQR() {
+  const qrDiv = document.getElementById('qr-reader');
+  qrDiv.style.display = 'block';
+  state.qrScanner = new Html5Qrcode("qr-reader");
+  state.qrScanner.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: { width: 250, height: 250 } },
+    (text) => {
+      document.getElementById('regAssinatura').value = text;
+      setAssinaturaOK();
+      state.qrScanner.stop();
+      qrDiv.style.display = 'none';
+    },
+    () => { } // error
+  ).catch(err => alert("Erro ao abrir câmera"));
 }
 
-// ===================== ADMIN: USUÁRIOS =====================
-async function loadUsuarios() {
-  showLoading();
-  try {
-    const res = await apiGet('getUsuarios');
-    if (res.success) {
-      const tbody = document.getElementById('listaUsuarios');
-      if (res.data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" class="empty-state">Nenhum usuário</td></tr>';
-      } else {
-        tbody.innerHTML = res.data.map(u => `
-          <tr>
-            <td>${u.usuario}</td>
-            <td>${u.nomeCompleto}</td>
-            <td><span style="text-transform:capitalize;">${u.perfil}</span></td>
-          </tr>
-        `).join('');
-      }
-    }
-  } catch (err) { /* handled */ }
-  hideLoading();
+function resetAssinatura() {
+  const st = document.getElementById('assinaturaStatus');
+  st.className = 'assinatura-status pending';
+  st.innerHTML = '<span class="material-icons-round">pending</span> Pendente';
+  document.getElementById('regAssinatura').value = '';
 }
 
-async function submitUsuario(e) {
-  e.preventDefault();
-  const data = {
-    action: 'cadastrarUsuario',
-    usuario: document.getElementById('novoUsuario').value.trim(),
-    senha: document.getElementById('novaSenha').value,
-    nomeCompleto: document.getElementById('novoNome').value.trim(),
-    perfil: document.getElementById('novoPerfil').value
-  };
+function setAssinaturaOK() {
+  const st = document.getElementById('assinaturaStatus');
+  st.className = 'assinatura-status signed';
+  st.innerHTML = '<span class="material-icons-round">check_circle</span> Assinado via QR';
+}
 
-  if (!data.usuario || !data.senha || !data.nomeCompleto) {
-    showToast('Preencha todos os campos!', 'error');
-    return;
-  }
+function getDiaSemana(d) {
+  const days = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+  return days[new Date(d + 'T12:00:00').getDay()];
+}
 
-  showLoading();
-  try {
-    const res = await apiPost(data);
-    if (res.success) {
-      showToast(res.message, 'success');
-      document.getElementById('formUsuario').reset();
-      loadUsuarios();
-    } else {
-      showToast(res.error, 'error');
-    }
-  } catch (err) { /* handled */ }
-  hideLoading();
+// ===================== UI UTILS =====================
+function showLoading() { document.getElementById('loadingOverlay').style.display = 'flex'; }
+function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
+function showToast(msg, type) {
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
 }

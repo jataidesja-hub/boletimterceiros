@@ -1,39 +1,61 @@
 // =====================================================
 // BOLETIM DIÁRIO - TRANSPORTES DE TRABALHADORES
-// Google Apps Script Backend (v2 - com Login)
+// Google Apps Script Backend (v3 - Admin + Motorista)
 // =====================================================
 
 const SPREADSHEET_ID = '1LMQcwrQUvXJBzY-FyOYs0WW8tRWTmFhHY208utKatYA';
 
-// Nomes das abas
 const ABA_BOLETINS = 'Boletins';
 const ABA_REGISTROS = 'Registros';
 const ABA_USUARIOS = 'Usuarios';
+const ABA_VEICULOS_CONFIG = 'VeiculosConfig';
 const ABA_PAGINA1 = 'Página1';
 
 // =====================================================
-// CONFIGURAÇÃO INICIAL DA PLANILHA
+// HELPERS DE FORMATAÇÃO
+// =====================================================
+function formatarData(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, 'America/Sao_Paulo', 'dd/MM/yyyy');
+  }
+  return String(val);
+}
+
+function formatarHora(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, 'America/Sao_Paulo', 'HH:mm');
+  }
+  return String(val);
+}
+
+// =====================================================
+// CONFIGURAÇÃO INICIAL
 // =====================================================
 function configurarPlanilha() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
 
-  // Aba Usuarios (login motoristas)
+  // Aba Usuarios
   let abaUsuarios = ss.getSheetByName(ABA_USUARIOS);
-  if (!abaUsuarios) {
-    abaUsuarios = ss.insertSheet(ABA_USUARIOS);
-  }
+  if (!abaUsuarios) { abaUsuarios = ss.insertSheet(ABA_USUARIOS); }
   abaUsuarios.clear();
   abaUsuarios.getRange('A1:D1').setValues([['Usuario', 'Senha', 'Nome_Completo', 'Perfil']]);
   abaUsuarios.getRange('A1:D1').setFontWeight('bold');
   abaUsuarios.setFrozenRows(1);
-  // Adicionar admin padrão
   abaUsuarios.appendRow(['admin', 'admin123', 'Administrador', 'admin']);
+
+  // Aba VeiculosConfig (flag de assinatura obrigatória)
+  let abaVC = ss.getSheetByName(ABA_VEICULOS_CONFIG);
+  if (!abaVC) { abaVC = ss.insertSheet(ABA_VEICULOS_CONFIG); }
+  abaVC.clear();
+  abaVC.getRange('A1:B1').setValues([['Cod_Veiculo', 'Requer_Assinatura']]);
+  abaVC.getRange('A1:B1').setFontWeight('bold');
+  abaVC.setFrozenRows(1);
 
   // Aba Boletins
   let abaBoletins = ss.getSheetByName(ABA_BOLETINS);
-  if (!abaBoletins) {
-    abaBoletins = ss.insertSheet(ABA_BOLETINS);
-  }
+  if (!abaBoletins) { abaBoletins = ss.insertSheet(ABA_BOLETINS); }
   abaBoletins.clear();
   abaBoletins.getRange('A1:I1').setValues([[
     'ID', 'Transportador', 'Motorista', 'Placa', 'Cod_Veiculo', 'Rota', 'Mes_Referencia', 'Data_Criacao', 'Usuario'
@@ -43,9 +65,7 @@ function configurarPlanilha() {
 
   // Aba Registros
   let abaRegistros = ss.getSheetByName(ABA_REGISTROS);
-  if (!abaRegistros) {
-    abaRegistros = ss.insertSheet(ABA_REGISTROS);
-  }
+  if (!abaRegistros) { abaRegistros = ss.insertSheet(ABA_REGISTROS); }
   abaRegistros.clear();
   abaRegistros.getRange('A1:N1').setValues([[
     'Boletim_ID', 'Data', 'Dia_Semana',
@@ -68,18 +88,18 @@ function doGet(e) {
     switch (action) {
       case 'login':
         return jsonResponse(login(e.parameter.usuario, e.parameter.senha));
-      case 'getVeiculosMotorista':
-        return jsonResponse(getVeiculosMotorista(e.parameter.motorista));
+      case 'buscarVeiculoPorCodigo':
+        return jsonResponse(buscarVeiculoPorCodigo(e.parameter.codigo));
       case 'getBoletins':
         return jsonResponse(getBoletins(e.parameter.usuario));
       case 'getBoletim':
         return jsonResponse(getBoletim(e.parameter.id));
       case 'getRegistros':
         return jsonResponse(getRegistros(e.parameter.boletimId));
-      case 'buscarVeiculoPorCodigo':
-        return jsonResponse(buscarVeiculoPorCodigo(e.parameter.codigo));
       case 'getUsuarios':
         return jsonResponse(getUsuarios());
+      case 'getVeiculosConfig':
+        return jsonResponse(getVeiculosConfig());
       default:
         return jsonResponse({ error: 'Ação não reconhecida' });
     }
@@ -105,6 +125,8 @@ function doPost(e) {
         return jsonResponse(excluirBoletim(data));
       case 'cadastrarUsuario':
         return jsonResponse(cadastrarUsuario(data));
+      case 'salvarVeiculoConfig':
+        return jsonResponse(salvarVeiculoConfig(data));
       default:
         return jsonResponse({ error: 'Ação não reconhecida' });
     }
@@ -114,34 +136,7 @@ function doPost(e) {
 }
 
 function jsonResponse(data) {
-  return ContentService
-    .createTextOutput(JSON.stringify(data))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-// =====================================================
-// HELPERS DE FORMATAÇÃO
-// =====================================================
-function formatarData(val) {
-  if (!val) return '';
-  if (val instanceof Date) {
-    return Utilities.formatDate(val, 'America/Sao_Paulo', 'dd/MM/yyyy');
-  }
-  return String(val);
-}
-
-function formatarHora(val) {
-  if (!val) return '';
-  if (val instanceof Date) {
-    return Utilities.formatDate(val, 'America/Sao_Paulo', 'HH:mm');
-  }
-  return String(val);
-}
-
-function fmtCell(val) {
-  if (!val && val !== 0) return '';
-  if (val instanceof Date) return String(val);
-  return String(val);
+  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
 }
 
 // =====================================================
@@ -151,7 +146,7 @@ function login(usuario, senha) {
   if (!usuario || !senha) return { success: false, error: 'Usuário e senha obrigatórios' };
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const aba = ss.getSheetByName(ABA_USUARIOS);
-  if (!aba) return { success: false, error: 'Aba Usuarios não encontrada. Execute configurarPlanilha.' };
+  if (!aba) return { success: false, error: 'Execute configurarPlanilha primeiro' };
   const dados = aba.getDataRange().getValues();
   for (let i = 1; i < dados.length; i++) {
     if (String(dados[i][0]).trim().toLowerCase() === String(usuario).trim().toLowerCase() &&
@@ -159,9 +154,9 @@ function login(usuario, senha) {
       return {
         success: true,
         data: {
-          usuario: dados[i][0],
-          nomeCompleto: dados[i][2],
-          perfil: dados[i][3] || 'motorista'
+          usuario: String(dados[i][0]).trim(),
+          nomeCompleto: String(dados[i][2]),
+          perfil: String(dados[i][3]) || 'motorista'
         }
       };
     }
@@ -175,11 +170,7 @@ function getUsuarios() {
   const dados = aba.getDataRange().getValues();
   const resultado = [];
   for (let i = 1; i < dados.length; i++) {
-    resultado.push({
-      usuario: dados[i][0],
-      nomeCompleto: dados[i][2],
-      perfil: dados[i][3] || 'motorista'
-    });
+    resultado.push({ usuario: String(dados[i][0]), nomeCompleto: String(dados[i][2]), perfil: String(dados[i][3]) || 'motorista' });
   }
   return { success: true, data: resultado };
 }
@@ -187,7 +178,6 @@ function getUsuarios() {
 function cadastrarUsuario(data) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const aba = ss.getSheetByName(ABA_USUARIOS);
-  // Verificar se já existe
   const dados = aba.getDataRange().getValues();
   for (let i = 1; i < dados.length; i++) {
     if (String(dados[i][0]).trim().toLowerCase() === String(data.usuario).trim().toLowerCase()) {
@@ -195,33 +185,61 @@ function cadastrarUsuario(data) {
     }
   }
   aba.appendRow([data.usuario, data.senha, data.nomeCompleto, data.perfil || 'motorista']);
-  return { success: true, message: 'Usuário cadastrado com sucesso!' };
+  return { success: true, message: 'Usuário cadastrado!' };
 }
 
 // =====================================================
-// VEÍCULOS DO MOTORISTA (PÁGINA1)
-// Página1: A=Fornecedor(Transportador), B=Cod, C=cod.fornecedor, D=placa, E=Rota
+// VEÍCULOS CONFIG (Assinatura obrigatória)
 // =====================================================
-function getVeiculosMotorista(motorista) {
+function getVeiculosConfig() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const aba = ss.getSheetByName(ABA_PAGINA1);
-  if (!aba) return { success: false, error: 'Aba Página1 não encontrada' };
+  const aba = ss.getSheetByName(ABA_VEICULOS_CONFIG);
+  if (!aba) return { success: true, data: [] };
   const dados = aba.getDataRange().getValues();
   const resultado = [];
-  const nomeBusca = String(motorista).trim().toUpperCase();
   for (let i = 1; i < dados.length; i++) {
-    // Retorna todos os veículos (o motorista escolhe qual está dirigindo)
-    resultado.push({
-      transportador: String(dados[i][0]),
-      codVeiculo: String(dados[i][1]),
-      codFornecedor: String(dados[i][2]),
-      placa: String(dados[i][3]),
-      rota: String(dados[i][4])
-    });
+    resultado.push({ codVeiculo: String(dados[i][0]), requerAssinatura: String(dados[i][1]).toLowerCase() === 'sim' });
   }
   return { success: true, data: resultado };
 }
 
+function salvarVeiculoConfig(data) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let aba = ss.getSheetByName(ABA_VEICULOS_CONFIG);
+  if (!aba) {
+    aba = ss.insertSheet(ABA_VEICULOS_CONFIG);
+    aba.getRange('A1:B1').setValues([['Cod_Veiculo', 'Requer_Assinatura']]);
+    aba.setFrozenRows(1);
+  }
+  // Verificar se já existe
+  const dados = aba.getDataRange().getValues();
+  for (let i = 1; i < dados.length; i++) {
+    if (String(dados[i][0]).trim() === String(data.codVeiculo).trim()) {
+      aba.getRange(i + 1, 2).setValue(data.requerAssinatura ? 'Sim' : 'Não');
+      return { success: true, message: 'Configuração atualizada!' };
+    }
+  }
+  aba.appendRow([data.codVeiculo, data.requerAssinatura ? 'Sim' : 'Não']);
+  return { success: true, message: 'Configuração salva!' };
+}
+
+function verificarAssinaturaObrigatoria(codVeiculo) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const aba = ss.getSheetByName(ABA_VEICULOS_CONFIG);
+  if (!aba) return false;
+  const dados = aba.getDataRange().getValues();
+  for (let i = 1; i < dados.length; i++) {
+    if (String(dados[i][0]).trim() === String(codVeiculo).trim()) {
+      return String(dados[i][1]).toLowerCase() === 'sim';
+    }
+  }
+  return false;
+}
+
+// =====================================================
+// BUSCAR VEÍCULO (PÁGINA1)
+// A=Fornecedor, B=Cod, C=cod.fornecedor, D=placa, E=Rota
+// =====================================================
 function buscarVeiculoPorCodigo(codigo) {
   if (!codigo) return { success: false, error: 'Código não informado' };
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -231,6 +249,7 @@ function buscarVeiculoPorCodigo(codigo) {
   const codigoBusca = String(codigo).trim();
   for (let i = 1; i < dados.length; i++) {
     if (String(dados[i][1]).trim() == codigoBusca) {
+      const requerAss = verificarAssinaturaObrigatoria(codigoBusca);
       return {
         success: true,
         data: {
@@ -238,7 +257,8 @@ function buscarVeiculoPorCodigo(codigo) {
           codVeiculo: String(dados[i][1]),
           codFornecedor: String(dados[i][2]),
           placa: String(dados[i][3]),
-          rota: String(dados[i][4])
+          rota: String(dados[i][4]),
+          requerAssinatura: requerAss
         }
       };
     }
@@ -255,7 +275,6 @@ function getBoletins(usuario) {
   const dados = aba.getDataRange().getValues();
   const resultado = [];
   for (let i = 1; i < dados.length; i++) {
-    // Se usuario informado, filtrar. Se admin, mostra tudo.
     if (usuario && usuario !== 'admin' && String(dados[i][8]) !== usuario) continue;
     resultado.push({
       id: String(dados[i][0]),
@@ -278,6 +297,8 @@ function getBoletim(id) {
   const dados = aba.getDataRange().getValues();
   for (let i = 1; i < dados.length; i++) {
     if (String(dados[i][0]) === String(id)) {
+      const codV = String(dados[i][4]);
+      const requerAss = verificarAssinaturaObrigatoria(codV);
       return {
         success: true,
         data: {
@@ -285,11 +306,12 @@ function getBoletim(id) {
           transportador: String(dados[i][1]),
           motorista: String(dados[i][2]),
           placa: String(dados[i][3]),
-          codVeiculo: String(dados[i][4]),
+          codVeiculo: codV,
           rota: String(dados[i][5]),
           mesReferencia: String(dados[i][6]),
           dataCriacao: String(dados[i][7]),
-          usuario: String(dados[i][8])
+          usuario: String(dados[i][8]),
+          requerAssinatura: requerAss
         }
       };
     }
@@ -302,20 +324,8 @@ function criarBoletim(data) {
   const aba = ss.getSheetByName(ABA_BOLETINS);
   const id = Utilities.getUuid();
   const agora = Utilities.formatDate(new Date(), 'America/Sao_Paulo', 'dd/MM/yyyy HH:mm');
-
-  aba.appendRow([
-    id,
-    data.transportador,
-    data.motorista,
-    data.placa,
-    data.codVeiculo,
-    data.rota,
-    data.mesReferencia,
-    agora,
-    data.usuario || ''
-  ]);
-
-  return { success: true, id: id, message: 'Boletim criado com sucesso!' };
+  aba.appendRow([id, data.transportador, data.motorista, data.placa, data.codVeiculo, data.rota, data.mesReferencia, agora, data.usuario || '']);
+  return { success: true, id: id, message: 'Boletim criado!' };
 }
 
 function excluirBoletim(data) {
@@ -323,16 +333,14 @@ function excluirBoletim(data) {
   const abaReg = ss.getSheetByName(ABA_REGISTROS);
   const dadosReg = abaReg.getDataRange().getValues();
   for (let i = dadosReg.length - 1; i >= 1; i--) {
-    if (String(dadosReg[i][0]) === String(data.id)) {
-      abaReg.deleteRow(i + 1);
-    }
+    if (String(dadosReg[i][0]) === String(data.id)) abaReg.deleteRow(i + 1);
   }
   const aba = ss.getSheetByName(ABA_BOLETINS);
   const dados = aba.getDataRange().getValues();
   for (let i = 1; i < dados.length; i++) {
     if (String(dados[i][0]) === String(data.id)) {
       aba.deleteRow(i + 1);
-      return { success: true, message: 'Boletim excluído com sucesso!' };
+      return { success: true, message: 'Boletim excluído!' };
     }
   }
   return { success: false, error: 'Boletim não encontrado' };
@@ -373,29 +381,16 @@ function getRegistros(boletimId) {
 function salvarRegistro(data) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const aba = ss.getSheetByName(ABA_REGISTROS);
-
   const kmIni = parseFloat(data.kmInicialIda) || 0;
   const kmFin = parseFloat(data.kmFinalVolta) || 0;
   const kmRodados = kmFin > 0 && kmIni > 0 ? kmFin - kmIni : 0;
-
   aba.appendRow([
-    data.boletimId,
-    data.data,
-    data.diaSemana,
-    data.horaInicialIda,
-    data.kmInicialIda,
-    data.horaFinalIda,
-    data.numPessoasIda,
-    data.horaInicialVolta,
-    data.kmFinalVolta,
-    data.horaFinalVolta,
-    data.numPessoasVolta,
-    data.objCusto,
-    kmRodados,
-    data.assinatura || ''
+    data.boletimId, data.data, data.diaSemana,
+    data.horaInicialIda, data.kmInicialIda, data.horaFinalIda, data.numPessoasIda,
+    data.horaInicialVolta, data.kmFinalVolta, data.horaFinalVolta, data.numPessoasVolta,
+    data.objCusto, kmRodados, data.assinatura || ''
   ]);
-
-  return { success: true, message: 'Registro salvo com sucesso!' };
+  return { success: true, message: 'Registro salvo!' };
 }
 
 function editarRegistro(data) {
@@ -403,35 +398,22 @@ function editarRegistro(data) {
   const aba = ss.getSheetByName(ABA_REGISTROS);
   const rowIndex = data.rowIndex;
   if (!rowIndex || rowIndex < 2) return { success: false, error: 'Índice inválido' };
-
   const kmIni = parseFloat(data.kmInicialIda) || 0;
   const kmFin = parseFloat(data.kmFinalVolta) || 0;
   const kmRodados = kmFin > 0 && kmIni > 0 ? kmFin - kmIni : 0;
-
   aba.getRange(rowIndex, 2, 1, 13).setValues([[
-    data.data,
-    data.diaSemana,
-    data.horaInicialIda,
-    data.kmInicialIda,
-    data.horaFinalIda,
-    data.numPessoasIda,
-    data.horaInicialVolta,
-    data.kmFinalVolta,
-    data.horaFinalVolta,
-    data.numPessoasVolta,
-    data.objCusto,
-    kmRodados,
-    data.assinatura || ''
+    data.data, data.diaSemana,
+    data.horaInicialIda, data.kmInicialIda, data.horaFinalIda, data.numPessoasIda,
+    data.horaInicialVolta, data.kmFinalVolta, data.horaFinalVolta, data.numPessoasVolta,
+    data.objCusto, kmRodados, data.assinatura || ''
   ]]);
-
-  return { success: true, message: 'Registro atualizado com sucesso!' };
+  return { success: true, message: 'Registro atualizado!' };
 }
 
 function excluirRegistro(data) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const aba = ss.getSheetByName(ABA_REGISTROS);
-  const rowIndex = data.rowIndex;
-  if (!rowIndex || rowIndex < 2) return { success: false, error: 'Índice inválido' };
-  aba.deleteRow(rowIndex);
-  return { success: true, message: 'Registro excluído com sucesso!' };
+  if (!data.rowIndex || data.rowIndex < 2) return { success: false, error: 'Índice inválido' };
+  aba.deleteRow(data.rowIndex);
+  return { success: true, message: 'Registro excluído!' };
 }
