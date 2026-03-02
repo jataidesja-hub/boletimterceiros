@@ -364,6 +364,7 @@ function renderBoletimInfo(b) {
 function renderRegistros(regs) {
   const tbody = document.getElementById('registrosDiarios');
   tbody.innerHTML = regs.map(r => `
+    <tr>
       <td>
         <div style="font-size:0.8rem; font-weight:600">${r.data || '-'}</div>
         <div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase">${r.diaSemana || ''}</div>
@@ -374,8 +375,8 @@ function renderRegistros(regs) {
       <td><span style="font-weight:700; color:var(--accent-green)">${r.kmRodados || '0'}</span></td>
       <td>${r.assinatura ? '<span class="material-icons-round" style="color:var(--accent-green)">check_circle</span>' : ((state.currentBoletimData && state.currentBoletimData.requerAssinatura) ? '<span class="material-icons-round" style="color:var(--accent-red)">cancel</span>' : '-')}</td>
       <td>
-        <button class="btn btn-sm" onclick="editarReg(${r.rowIndex})">E</button>
-        <button class="btn btn-sm" style="color:red" onclick="excluirReg(${r.rowIndex})">X</button>
+        <button class="btn btn-sm" onclick="editarReg(${r.rowIndex})"><span class="material-icons-round" style="font-size:16px">edit</span></button>
+        <button class="btn btn-sm" style="color:red" onclick="excluirReg(${r.rowIndex})"><span class="material-icons-round" style="font-size:16px">delete</span></button>
       </td>
     </tr>
   `).join('');

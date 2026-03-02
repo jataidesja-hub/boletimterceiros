@@ -104,7 +104,7 @@ function doGet(e) {
       case 'getBoletim':
         return jsonResponse(getBoletim(e.parameter.id));
       case 'getRegistros':
-        return jsonResponse(getRegistros(e.parameter.boletimId));
+        return jsonResponse(getRegistros(e));
       case 'getUsuarios':
         return jsonResponse(getUsuarios());
       case 'getVeiculosConfig':
