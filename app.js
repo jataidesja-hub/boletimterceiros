@@ -411,9 +411,13 @@ function editarReg(idx) { abrirModalRegistro(idx); }
 async function submitRegistro(e) {
   e.preventDefault();
   const d = document.getElementById('regData').value;
-  if (state.currentBoletimData.requerAssinatura && !document.getElementById('regAssinatura').value) {
-    alert('Assinatura QR Code obrigatória!'); return;
+  if (!d) { showToast('Selecione a data', 'error'); return; }
+
+  if (state.currentBoletimData && state.currentBoletimData.requerAssinatura && !document.getElementById('regAssinatura').value) {
+    showToast('Assinatura QR Code obrigatória!', 'error');
+    return;
   }
+
   const reg = {
     boletimId: state.currentBoletimId,
     data: d.split('-').reverse().join('/'),
@@ -431,12 +435,27 @@ async function submitRegistro(e) {
   };
 
   showLoading();
-  let res;
-  if (state.editingRowIndex) { res = await apiPost({ ...reg, action: 'editarRegistro', rowIndex: state.editingRowIndex }); }
-  else { res = await apiPost({ ...reg, action: 'salvarRegistro' }); }
+  try {
+    let res;
+    if (state.editingRowIndex) {
+      res = await apiPost({ ...reg, action: 'editarRegistro', rowIndex: state.editingRowIndex });
+    } else {
+      res = await apiPost({ ...reg, action: 'salvarRegistro' });
+    }
 
-  if (res.success) { showToast(res.message, 'success'); fecharModalRegistro(); abrirBoletimDetalhes(state.currentBoletimId); }
-  hideLoading();
+    if (res && res.success) {
+      showToast(res.message, 'success');
+      fecharModalRegistro();
+      abrirBoletimDetalhes(state.currentBoletimId);
+    } else {
+      showToast(res ? res.error : 'Erro desconhecido ao salvar', 'error');
+    }
+  } catch (err) {
+    console.error('Erro no salvamento:', err);
+    showToast('Falha na comunicação com o servidor', 'error');
+  } finally {
+    hideLoading();
+  }
 }
 
 function iniciarLeituraQR() {
