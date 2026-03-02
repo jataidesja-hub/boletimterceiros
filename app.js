@@ -365,10 +365,8 @@ function renderRegistros(regs) {
   const tbody = document.getElementById('registrosDiarios');
   tbody.innerHTML = regs.map(r => `
     <tr>
-      <td>
-        <div style="font-size:0.8rem; font-weight:600">${r.data || '-'}</div>
-        <div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase">${r.diaSemana || ''}</div>
-      </td>
+      <td><div style="font-size:0.8rem; font-weight:600">${r.data || '-'}</div></td>
+      <td><div style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase">${r.diaSemana || ''}</div></td>
       <td class="ida">${r.horaInicialIda || '-'}</td><td class="ida">${r.kmInicialIda || '-'}</td><td class="ida">${r.horaFinalIda || '-'}</td><td class="ida">${r.numPessoasIda || '0'}</td>
       <td class="volta">${r.horaInicialVolta || '-'}</td><td class="volta">${r.kmFinalVolta || '-'}</td><td class="volta">${r.horaFinalVolta || '-'}</td><td class="volta">${r.numPessoasVolta || '0'}</td>
       <td>${r.objCusto || '-'}</td>
@@ -376,7 +374,7 @@ function renderRegistros(regs) {
       <td>${r.assinatura ? '<span class="material-icons-round" style="color:var(--accent-green)">check_circle</span>' : ((state.currentBoletimData && state.currentBoletimData.requerAssinatura) ? '<span class="material-icons-round" style="color:var(--accent-red)">cancel</span>' : '-')}</td>
       <td>
         <button class="btn btn-sm" onclick="editarReg(${r.rowIndex})"><span class="material-icons-round" style="font-size:16px">edit</span></button>
-        <button class="btn btn-sm" style="color:red" onclick="excluirReg(${r.rowIndex})"><span class="material-icons-round" style="font-size:16px">delete</span></button>
+        <button class="btn btn-sm" style="color:var(--accent-red)" onclick="excluirReg(${r.rowIndex})"><span class="material-icons-round" style="font-size:16px">delete</span></button>
       </td>
     </tr>
   `).join('');
